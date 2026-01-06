@@ -75,7 +75,7 @@ export const RFProvider = ({ children }) => {
         freq, setFreq,
         bw, setBw,
         sf, setSf,
-        sf, setSf,
+
         cr, setCr,
         erp, cableLoss,
         units, setUnits,
