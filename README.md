@@ -72,6 +72,19 @@ docker run -d -p 5173:5173 ghcr.io/d3mocide/mesh_analyzer:latest
 
 **Option 2: Docker Compose**
 
+Sample Compose File
+```yml
+services:
+  app:
+    image: ghcr.io/d3mocide/mesh_analyzer:latest
+    container_name: mesh_analyzer_dev
+    ports:
+      - "5173:5173"
+    environment:
+      - ALLOWED_HOSTS=localhost #Add your hostnames if using a reverse proxy
+    command: npm run dev -- --host
+```
+
 ```bash
 docker-compose up -d
 ```
