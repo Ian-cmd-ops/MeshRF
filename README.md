@@ -1,4 +1,4 @@
-# Mesh RF Analyzer
+# MeshRF Analyzer
 
 A modern, web-based RF simulation and link analysis tool designed for LoRa Mesh networks (Meshtastic, Reticulum, etc.). Built with React, Leaflet, and standard geospatial libraries.
 
@@ -44,7 +44,7 @@ A modern, web-based RF simulation and link analysis tool designed for LoRa Mesh 
 1.  Clone the repository:
 
     ```bash
-    git clone https://github.com/d3mocide/Mesh_RF_Analyzer.git
+    git clone https://github.com/d3mocide/meshrf.git
     cd mesh_analyzer
     ```
 
@@ -67,7 +67,7 @@ A modern, web-based RF simulation and link analysis tool designed for LoRa Mesh 
 **Option 1: Docker CLI**
 
 ```bash
-docker run -d -p 5173:5173 ghcr.io/d3mocide/Mesh_RF_Analyzer:latest
+docker run -d -p 5173:5173 ghcr.io/d3mocide/meshrf:latest
 ```
 
 **Option 2: Docker Compose**
@@ -76,7 +76,7 @@ Sample Compose File
 ```yml
 services:
   app:
-    image: ghcr.io/d3mocide/mesh_rf_analyzer:latest
+    image: ghcr.io/d3mocide/meshrf:latest
     container_name: mesh_analyzer
     ports:
       - "5173:5173"
