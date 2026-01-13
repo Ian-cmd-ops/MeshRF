@@ -1,6 +1,30 @@
 # Release Notes
 
-## v1.2 - OpenTopoData Migration & ViewShed Layer
+## v1.2.1 - Multi-Platform Docker Support
+
+### 🚀 ARM64 Architecture Support
+
+- **Multi-Platform Builds**: Docker images now built for both AMD64 and ARM64 architectures
+- **Broader Compatibility**:
+  - ✅ Apple Silicon (M1, M2, M3 Macs)
+  - ✅ Raspberry Pi 4/5 (64-bit)
+  - ✅ AWS Graviton instances
+  - ✅ Oracle Cloud ARM Ampere
+  - ✅ Traditional x86_64 servers
+- **Automatic Architecture Detection**: Docker automatically pulls the correct image for your system
+- **Build Caching**: Added GitHub Actions caching for faster subsequent builds
+
+### Technical Details
+
+Updated `.github/workflows/docker-publish.yml`:
+
+- Added Docker Buildx setup
+- Platform specification: `linux/amd64,linux/arm64`
+- GitHub Actions cache integration
+
+---
+
+## v1.2.0 - OpenTopoData Migration & ViewShed Layer
 
 This release replaces the Mapbox elevation API with OpenTopoData, adds a beta ViewShed visualization tool, and includes comprehensive code cleanup and security improvements.
 
