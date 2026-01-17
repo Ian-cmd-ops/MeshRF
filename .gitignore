@@ -32,6 +32,5 @@ dist-ssr
 opentopodata/
 
 # Build Artifacts
-libmeshrf/
 rf-engine/__pycache__/
 AI_DEV_STARTUP_PROMPT.md

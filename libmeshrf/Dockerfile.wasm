@@ -1,0 +1,18 @@
+FROM emscripten/emsdk:latest
+
+WORKDIR /app
+
+# Copy Source Code
+COPY . /app
+
+# Create build directory
+RUN mkdir -p build_wasm
+
+# CMake Configure & Build
+# Note: emcmake and emmake are provided by the base image
+WORKDIR /app/build_wasm
+RUN emcmake cmake .. -DEMSCRIPTEN=1
+RUN emmake make
+
+# Validate Output
+RUN ls -la meshrf.js meshrf.wasm
