@@ -1,17 +1,24 @@
-FROM node:24-alpine
+# Stage 1: Builder
+FROM node:24-alpine as builder
 
 WORKDIR /app
 
-# Install git as it's often needed for scaffolding or dependencies
-RUN apk add --no-cache git
-
-# Copy package files and install dependencies
+# Install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy source code
+# Copy source and build
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
+# Stage 2: Production Runner
+FROM nginx:alpine
 
-CMD ["npm", "run", "dev", "--", "--host"]
+# Copy build artifacts to Nginx html directory
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Expose HTTP port
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

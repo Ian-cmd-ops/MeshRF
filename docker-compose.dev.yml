@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+      target: builder # Stop at Node stage, don't build Nginx
+    container_name: meshrf_dev
+    command: npm run dev -- --host
+    ports:
+      - "5173:5173" # Vite Dev Port
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_MAP_LAT=45.5152
+      - VITE_MAP_LNG=-122.6784
+
+  rf-engine:
+    # Overlay dev volumes for Python hot-reloading
+    volumes:
+      - ./rf-engine:/app
+      - ./cache:/app/cache
+    # Run uvicorn with reload
+    command: ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "5001", "--reload"]

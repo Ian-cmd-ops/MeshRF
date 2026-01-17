@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from tile_manager import TileManager
+# tile_manager import removed
 
 # Constants
 EARTH_RADIUS_KM = 6371.0
@@ -15,24 +15,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
 
-def generate_profile(tile_manager, lat1, lon1, lat2, lon2, step_meters=30):
-    dist_m = haversine_distance(lat1, lon1, lat2, lon2)
-    if dist_m == 0:
-        return [tile_manager.get_elevation(lat1, lon1)], 0
-        
-    num_points = max(2, int(dist_m / step_meters))
-    
-    lats = np.linspace(lat1, lat2, num_points)
-    lons = np.linspace(lon1, lon2, num_points)
-    
-    elevations = []
-    # Optimization: Chunk by tile to reduce cache logic overhead?
-    # TileManager handles caching, so just loop.
-    for lat, lon in zip(lats, lons):
-        elev = tile_manager.get_elevation(lat, lon)
-        elevations.append(elev)
-        
-    return elevations, dist_m
 
 def calculate_fresnel_zone(dist_m, freq_mhz, p_d1, p_d2):
     # Radius of n-th Fresnel zone at point P (dist d1 from TX, d2 from RX)
@@ -43,9 +25,9 @@ def calculate_fresnel_zone(dist_m, freq_mhz, p_d1, p_d2):
     
     return math.sqrt((1 * wavelength * p_d1 * p_d2) / dist_m)
 
-def analyze_link(tile_manager, lat1, lon1, lat2, lon2, freq_mhz, tx_h, rx_h):
-    # 1. Generate Terrain Profile
-    elevs, dist_m = generate_profile(tile_manager, lat1, lon1, lat2, lon2)
+def analyze_link(elevs, dist_m, freq_mhz, tx_h, rx_h):
+    # 1. Profile is now passed in (Decoupled from TileManager)
+    # elevs should be a list or numpy array of elevations along the path
     elevs = np.array(elevs)
     
     num_points = len(elevs)

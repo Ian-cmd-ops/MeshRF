@@ -9,8 +9,8 @@ import { useRF } from '../../context/RFContext';
 import { calculateLinkBudget } from '../../utils/rfMath';
 import * as turf from '@turf/turf';
 import DeckGLOverlay from './DeckGLOverlay';
-import { ViewshedLayer } from './ViewshedLayer';
-import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+import WasmViewshedLayer from './WasmViewshedLayer';
+import { useViewshedTool } from '../../hooks/useViewshedTool';
 
 // Fix for default marker icon issues in React Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -27,35 +27,18 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 import { useMapEvents } from 'react-leaflet';
 
-const ViewshedClickHandler = ({ active, setObserver }) => {
+const ViewshedClickHandler = ({ active, runAnalysis, setObserver }) => {
     useMapEvents({
         click(e) {
             if (active) {
-                // Fetch elevation for this point
                 const { lat, lng } = e.latlng;
                 
-                // Optimistic update first (with default height 0)
-                setObserver({ lat, lng, height: 0 });
-                
-                // Fetch real elevation
-                fetch('http://localhost:5001/get-elevation', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lat, lon: lng })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    console.log("Viewshed Debug - Fetched Elevation (Click):", data);
-                    const elevation = data.elevation || 0;
-                    // Update with real elevation + 2m observer height (tripod/human)
-                    const newObserver = { lat, lng, height: elevation + 2.0 };
-                    console.log("Viewshed Debug - Setting Observer (Click):", newObserver);
-                    setObserver(newObserver);
-                })
-                .catch(err => {
-                    console.error("Failed to fetch elevation:", err);
-                    setObserver({ lat, lng, height: 2.0 }); // Fallback
-                });
+                // Set observer immediately for UI feedback
+                setObserver({ lat, lng, height: 2.0 });
+
+                // Run Wasm Analysis
+                // Default props for now
+                runAnalysis(lat, lng, 2.0, 5000); 
             }
         }
     });
@@ -72,9 +55,11 @@ const MapComponent = () => {
   const [nodes, setNodes] = useState([]); 
   const [linkStats, setLinkStats] = useState({ minClearance: 0, isObstructed: false, loading: false });
   const [coverageOverlay, setCoverageOverlay] = useState(null); // { url, bounds }
-  const [toolMode, setToolMode] = useState('link'); // 'link', 'optimize', 'coverage', 'viewshed', 'none'
-  const [heatmapData, setHeatmapData] = useState([]); // Data for HeatmapLayer
+  const [toolMode, setToolMode] = useState('link'); // 'link', 'optimize', 'viewshed', 'none'
   const [viewshedObserver, setViewshedObserver] = useState(null); // Single Point for Viewshed Tool
+  
+  // Wasm Viewshed Tool Hook
+  const { runAnalysis, resultLayer, isCalculating } = useViewshedTool(toolMode === 'viewshed');
   
   // Calculate Budget at container level for Panel
   const { txPower, antennaGain, freq, sf, bw, cableLoss, units, mapStyle, batchNodes } = useRF();
@@ -128,52 +113,32 @@ const MapComponent = () => {
   const deckLayers = [];
   
   // Viewshed Layer (Only active in 'viewshed' mode)
-  if (toolMode === 'viewshed' && viewshedObserver) {
-      deckLayers.push(new ViewshedLayer({
-          id: 'viewshed-layer',
-          observerPos: viewshedObserver, // Passed as prop, consumed by renderSubLayers
-          updateTriggers: {
-              renderSubLayers: [viewshedObserver] // Ensure sublayers re-render when observer moves
-          }
+  if (toolMode === 'viewshed' && resultLayer && resultLayer.data) {
+      // Create ImageData or similar for the bitmap
+      // resultLayer.data is Uint8Array
+      // We need to convert it to a format deck.gl accepts.
+      // Fastest: Create ImageData
+      const { width, height, data } = resultLayer;
+      // We need RGBA for standard ImageData? Or just passing typed array might fail if not formatted?
+      // Actually, BitmapLayer supports `image` as ImageData.
+      // Let's pack R channel.
+      const rgbaData = new Uint8ClampedArray(width * height * 4);
+      for (let i = 0; i < width * height; i++) {
+          const val = data[i];
+          rgbaData[i * 4] = val;     // R
+          rgbaData[i * 4 + 1] = 0;   // G
+          rgbaData[i * 4 + 2] = 0;   // B
+          rgbaData[i * 4 + 3] = 255; // A (Opacity handled in shader or here)
+      }
+      const imageData = new ImageData(rgbaData, width, height);
+      
+      deckLayers.push(new WasmViewshedLayer({
+          id: 'wasm-viewshed-layer',
+          image: imageData,
+          bounds: [resultLayer.bounds.west, resultLayer.bounds.south, resultLayer.bounds.east, resultLayer.bounds.north],
+          opacity: 0.6
       }));
   }
-
-  // Placeholder Heatmap Data if empty
-  if (toolMode === 'coverage' && heatmapData.length === 0) {
-       // Mock data for immediate feedback
-       // In real app, this would come from a comprehensive coverage simulation
-       const mockPoints = [];
-       for(let i=0; i<100; i++) {
-           mockPoints.push({
-               lon: defaultLng + (Math.random() - 0.5) * 0.1,
-               lat: defaultLat + (Math.random() - 0.5) * 0.1,
-               signalStrength: Math.random()
-           });
-       }
-       // Avoid setting state in render body in real React, but for this deckLayers construction block:
-       // We'll just use the local variable for the layer
-       deckLayers.push(new HeatmapLayer({
-          id: 'coverage-heatmap',
-          data: mockPoints,
-          getPosition: d => [d.lon, d.lat],
-          getWeight: d => d.signalStrength,
-          radiusPixels: 40,
-          intensity: 1,
-          threshold: 0.05
-      }));
-  } else if (toolMode === 'coverage' && heatmapData.length > 0) {
-      deckLayers.push(new HeatmapLayer({
-          id: 'coverage-heatmap',
-          data: heatmapData,
-          getPosition: d => [d.lon, d.lat],
-          getWeight: d => d.signalStrength,
-          radiusPixels: 40,
-          intensity: 1,
-          threshold: 0.05
-      }));
-  }
-
-
 
   return (
     <div style={{ flex: 1, height: '100%', position: 'relative' }}>
@@ -185,6 +150,7 @@ const MapComponent = () => {
         <ViewshedClickHandler 
             active={toolMode === 'viewshed'} 
             setObserver={setViewshedObserver} 
+            runAnalysis={runAnalysis}
         />
         <TileLayer
           attribution={currentStyle.attribution}
@@ -288,21 +254,7 @@ const MapComponent = () => {
             {toolMode === 'optimize' ? 'Cancel Find' : 'Find Ideal Spot'}
           </button>
 
-          <button 
-            onClick={() => setToolMode(toolMode === 'coverage' ? 'none' : 'coverage')}
-            style={{
-                background: toolMode === 'coverage' ? '#ffaa00' : '#222',
-                color: toolMode === 'coverage' ? '#000' : '#fff',
-                border: '1px solid #444',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.5)'
-            }}
-          >
-            Heatmap
-          </button>
+
           
           <button 
             onClick={() => {

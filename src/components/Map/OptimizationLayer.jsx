@@ -4,11 +4,19 @@ import L from 'leaflet';
 import { optimizeLocation } from '../../utils/rfService';
 import { useRF } from '../../context/RFContext';
 
-const ghostIcon = L.divIcon({
+const createRankedIcon = (rank) => L.divIcon({
     className: 'ghost-icon',
-    html: `<div style="background-color: rgba(0, 255, 255, 0.5); width: 16px; height: 16px; border-radius: 50%; border: 2px dashed white;"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
+    html: `<div style="
+        background-color: rgba(0, 255, 255, 0.9); 
+        width: 24px; height: 24px; 
+        border-radius: 50%; 
+        border: 2px solid white;
+        display: flex; align-items: center; justify-content: center;
+        color: black; font-weight: bold; font-family: sans-serif; font-size: 14px;
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    ">${rank}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
 });
 
 const OptimizationLayer = ({ active, setActive }) => {
@@ -108,7 +116,7 @@ const OptimizationLayer = ({ active, setActive }) => {
 
             {/* Ghost Nodes */}
             {ghostNodes.map((node, i) => (
-                <Marker key={i} position={[node.lat, node.lon]} icon={ghostIcon}>
+                <Marker key={i} position={[node.lat, node.lon]} icon={createRankedIcon(i + 1)}>
                     <Popup>
                         <strong>Ideal Spot #{i+1}</strong><br/>
                         Score: {node.score}

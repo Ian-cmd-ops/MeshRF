@@ -1,17 +1,6 @@
 FROM python:3.9-slim
 
-# Install system dependencies
-# splat: RF analysis tool
-# gdal-bin: Geospatial data abstraction library (for image conversion)
-# wget, unzip: For downloading terrain data
-RUN apt-get update && apt-get install -y \
-    splat \
-    gdal-bin \
-    wget \
-    unzip \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
+# Minimal Runtime for Tile Server
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app

@@ -2,8 +2,8 @@ services:
   app:
     build: .
     container_name: meshrf
-    ports:
-      - "5173:5173"
+    # ports:
+    #   - "5173:80"
     environment:
     # Hostname for reverse proxy
       - ALLOWED_HOSTS=localhost
@@ -12,10 +12,11 @@ services:
     # Default Map Center (Portland, OR)
       - VITE_MAP_LAT=45.5152
       - VITE_MAP_LNG=-122.6784
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run dev -- --host
+    # No volumes needed for production artifact
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    # command: npm run dev -- --host
 
   rf-engine:
     build: ./rf-engine
@@ -24,31 +25,18 @@ services:
       - "5001:5001"
     environment:
       # Elevation Data Configuration
-      # For custom OpenTopoData instance (e.g., self-hosted with local SRTM data)
-      # Leave blank to use public api.opentopodata.org (1000 requests/day limit)
-      - ELEVATION_API_URL=${ELEVATION_API_URL:-https://api.opentopodata.org}
+      # Using local OpenTopoData service
+      - ELEVATION_API_URL=http://opentopodata:5000
       
-      # Dataset to use: srtm30m, srtm90m, aster30m, ned10m, etc.
-      # See: https://www.opentopodata.org/datasets/
-      - ELEVATION_DATASET=${ELEVATION_DATASET:-srtm30m}
+      # Dataset to use: ned10m (High res US) or srtm30m (Global)
+      # User must download .hgt/.tif files to ./data/opentopodata
+      - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
     volumes:
       - ./cache:/app/cache
 
     restart: unless-stopped
     depends_on:
       - redis
-
-  rf-worker:
-    build: ./rf-engine
-    container_name: rf_worker
-    command: celery -A tasks worker --loglevel=info
-    volumes:
-      - ./cache:/app/cache
-
-    restart: unless-stopped
-    depends_on:
-      - redis
-      - rf-engine
 
   redis:
     image: redis:alpine
@@ -58,3 +46,14 @@ services:
     volumes:
       - ./redis_data:/data
     restart: always
+
+  opentopodata:
+    build:
+      context: ./opentopodata
+      dockerfile: docker/Dockerfile
+    container_name: opentopodata
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/opentopodata:/app/data
+    restart: unless-stopped

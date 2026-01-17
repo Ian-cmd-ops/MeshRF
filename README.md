@@ -14,11 +14,11 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
 - **Clutter Awareness**: Simulates signal loss through trees or urban "clutter" layers.
 - **Smart Updates**: Analysis only triggers when both TX and RX points are placed, minimizing unnecessary API calls.
 
-### 📍 Smart Location Optimization ⚠️ _In Development_
+### 📍 Smart Location Optimization
 
 - **Area Search**: Draw a bounding box on the map to automatically scan for optimal node placement.
-- **Heatmap Scoring**: Analyzes terrain and line-of-sight to suggest the best locations based on RF coverage. (Powered by the **RF Engine** background worker).
-- _Note: This feature is currently in active development and may have incomplete functionality._
+- **Top 5 Ranking**: Identifies the top 5 highest elevation points within the selected area, ranked by altitude.
+- **Visual Feedback**: Markers display their rank (1-5) directly on the map for easy identification.
 
 ### ⚡ Batch Operations
 
@@ -31,12 +31,11 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
 - **Radio Config**: Adjust Spreading Factor (SF), Bandwidth (BW), and Coding Rate (CR) to simulate real-world LoRa modulation (LongFast, ShortFast).
 - **Antenna Modeling**: Select standard antennas (Stubby, Dipole, Yagi) or input custom gain figures.
 
-### 🔭 Viewshed Analysis ⚠️ _In Development_
+### 🔭 Viewshed Analysis
 
 - **WebGL-Powered Visualization**: Real-time viewshed overlay showing visible terrain from observer point.
-- **Dynamic Calculation**: Interactive observer placement with instant terrain visibility analysis.
+- **Terrain-RGB Support**: Decodes standard Terrain-RGB tiles for efficient client-side rendering.
 - **Red/Green Overlay**: Visual indication of obstructed (red) vs. visible (green) terrain areas.
-- _Note: This feature is currently in active development and may have incomplete functionality._
 
 ### 🎨 Modern Experience
 
@@ -65,16 +64,16 @@ The system is designed as a set of microservices (Frontend, API, Worker, Redis).
    ```
 
 2. **Access the App**:
-
    - Frontend: `http://localhost:5173`
    - RF Engine API: `http://localhost:5001/docs` (Swagger UI)
 
 3. **Elevation Data Configuration** (Optional):
 
    The application uses [OpenTopoData](https://www.opentopodata.org/) for elevation tiles. By default, it uses the public API (1000 requests/day). For unlimited access, you can:
-
    - Use a custom OpenTopoData instance
    - Self-host OpenTopoData with local SRTM data
+
+   👉 **[See Setup Guide](./OPENTOPO_GUIDE.md)** for instructions on hosting local elevation data.
 
    Configure via environment variables in `docker-compose.yml`:
 
