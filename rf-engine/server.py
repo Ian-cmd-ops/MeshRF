@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import rf_worker
 import io
 from starlette.responses import Response
 from PIL import Image
@@ -26,93 +25,18 @@ class AnalysisRequest(BaseModel):
     height_meters: float
 
 # --- Dependencies ---
-from celery_config import celery_app
-from rf_worker import run_analysis, optimize_location_task
 import redis
 from tile_manager import TileManager
 import rf_physics
 from rf_physics import analyze_link
-from network_planner import NetworkPlanner
 
 # --- Initialization ---
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 redis_client = redis.Redis.from_url(REDIS_URL)
 tile_manager = TileManager(redis_client)
 
-# Initialize Physics & Planner
-physics_engine = rf_physics 
-planner = NetworkPlanner(physics_engine, tile_manager)
-
-@app.post("/analyze-coverage")
-async def analyze_coverage(req: AnalysisRequest):
-    # Phase 3: Should also be queued, but kept sync for Phase 1/2 compat unless updated.
-    # Let's keep sync for now as per prompt "return job_id" was for Task 2 Queue System.
-    # The prompt says: "When the frontend requests a Heatmap, push the job to the queue immediately and return a job_id."
-    
-    # So we should convert this to async too?
-    # For now, let's just queue optimize-location as requested in "Task 1: The Sieve Algorithm".
-    # Wait, Task 2 says "When the frontend requests a Heatmap...".
-    # I should queue both.
-    
-    task = celery_app.send_task('rf.analyze', args=[req.lat, req.lon, req.frequency_mhz, req.height_meters])
-    return {"job_id": task.id, "status": "queued"}
-
-@app.get("/status/{job_id}")
-def get_status(job_id: str):
-    from celery.result import AsyncResult
-    res = AsyncResult(job_id, app=celery_app)
-    if res.ready():
-        return {"status": "finished", "result": res.result}
-    return {"status": res.status}
-
-class OptimizeRequest(BaseModel):
-    min_lat: float
-    min_lon: float
-    max_lat: float
-    max_lon: float
-    frequency_mhz: float
-    height_meters: float
-
-
-class OptimizeNetworkRequest(BaseModel):
-    candidates: list[dict] # {lat, lon, height, weight, type}
-    polygon: dict # GeoJSON dict
-    frequency_mhz: float
-
-@app.post("/optimize-network")
-def optimize_network_endpoint(req: OptimizeNetworkRequest):
-    """
-    Synchronous network planning task (Prototype).
-    """
-    # 1. Sample Points
-    print("Sampling target points...")
-    targets = planner.sample_target_points(req.polygon, spacing_meters=200) # Coarse grid for speed
-    print(f"Sampled {len(targets)} targets.")
-    
-    # 2. Build Graph
-    print("Building coverage graph...")
-    G = planner.build_coverage_graph(req.candidates, targets, req.frequency_mhz)
-    print(f"Graph built with {G.number_of_edges()} edges.")
-    
-    # 3. Optimize
-    print("Running optimization...")
-    selected, coverage_pct = planner.optimize_sites(G)
-    print("Optimization complete.")
-    
-    return {
-        "status": "success",
-        "selected_sites": selected,
-        "coverage_percent": coverage_pct,
-        "total_targets": len(targets)
-    }
-
-@app.post("/optimize-location")
-async def optimize_location(req: OptimizeRequest):
-    task = celery_app.send_task('rf.optimize', args=[
-        req.min_lat, req.min_lon, req.max_lat, req.max_lon,
-        req.frequency_mhz, req.height_meters
-    ])
-    return {"job_id": task.id, "status": "queued"}
+# Legacy Endpoints Removed (analyze-coverage, optimize-location, etc.)
+# Logic moved to Wasm.
 
 class LinkRequest(BaseModel):
     tx_lat: float
@@ -183,3 +107,50 @@ def get_elevation_tile(z: int, x: int, y: int):
     
     return Response(content=buf.getvalue(), media_type="image/png")
 
+
+class OptimizeRequest(BaseModel):
+    min_lat: float
+    min_lon: float
+    max_lat: float
+    max_lon: float
+    frequency_mhz: float
+    height_meters: float
+
+@app.post("/optimize-location")
+def optimize_location_endpoint(req: OptimizeRequest):
+    """
+    Find the best location (highest elevation) within the bounding box.
+    Heuristic: Higher is generally better for RF coverage.
+    """
+    # Grid search (10x10)
+    steps = 10
+    lat_step = (req.max_lat - req.min_lat) / steps
+    lon_step = (req.max_lon - req.min_lon) / steps
+    
+    candidates = []
+    
+    for i in range(steps + 1):
+        for j in range(steps + 1):
+            lat = req.min_lat + (i * lat_step)
+            lon = req.min_lon + (j * lon_step)
+            
+            # Simple elevation check
+            elev = tile_manager.get_elevation(lat, lon)
+            
+            candidates.append({
+                "lat": lat, 
+                "lon": lon, 
+                "elevation": elev,
+                "score": elev 
+            })
+
+    # Sort by elevation desc
+    candidates.sort(key=lambda x: x["elevation"], reverse=True)
+    
+    # Take top 5
+    top_results = candidates[:5]
+
+    return {
+        "status": "success",
+        "locations": top_results
+    }

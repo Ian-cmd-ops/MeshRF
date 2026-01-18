@@ -1,62 +1,24 @@
 services:
   app:
-    build: .
-    container_name: meshrf
+    build:
+      context: .
+      target: builder # Stop at Node stage, don't build Nginx
+    container_name: meshrf_dev
+    command: npm run dev -- --host
     ports:
-      - "5173:5173"
-    environment:
-    # Hostname for reverse proxy
-      - ALLOWED_HOSTS=localhost
-    # Custom Elevation API Endpoint (Optional)
-    # - VITE_ELEVATION_API_URL=http://localhost:8080/v1/elevation
-    # Default Map Center (Portland, OR)
-      - VITE_MAP_LAT=45.5152
-      - VITE_MAP_LNG=-122.6784
+      - "5173:5173" # Vite Dev Port
     volumes:
       - .:/app
       - /app/node_modules
-    command: npm run dev -- --host
+    environment:
+      - VITE_MAP_LAT=45.5152
+      - VITE_MAP_LNG=-122.6784
 
   rf-engine:
-    build: ./rf-engine
-    container_name: rf_engine
-    ports:
-      - "5001:5001"
-    environment:
-      # Elevation Data Configuration
-      # For custom OpenTopoData instance (e.g., self-hosted with local SRTM data)
-      # Leave blank to use public api.opentopodata.org (1000 requests/day limit)
-      - ELEVATION_API_URL=${ELEVATION_API_URL:-https://api.opentopodata.org}
-      
-      # Dataset to use: srtm30m, srtm90m, aster30m, ned10m, etc.
-      # See: https://www.opentopodata.org/datasets/
-      - ELEVATION_DATASET=${ELEVATION_DATASET:-srtm30m}
+    # Overlay dev volumes for Python hot-reloading
     volumes:
       - ./rf-engine:/app
       - ./cache:/app/cache
+    # Run uvicorn with reload
+    command: ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "5001", "--reload"]
 
-    restart: unless-stopped
-    depends_on:
-      - redis
-
-  rf-worker:
-    build: ./rf-engine
-    container_name: rf_worker
-    command: celery -A tasks worker --loglevel=info
-    volumes:
-      - ./rf-engine:/app
-      - ./cache:/app/cache
-
-    restart: unless-stopped
-    depends_on:
-      - redis
-      - rf-engine
-
-  redis:
-    image: redis:alpine
-    user: root
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./redis_data:/data
-    restart: always

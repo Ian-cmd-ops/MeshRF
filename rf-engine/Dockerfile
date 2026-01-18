@@ -1,11 +1,7 @@
 FROM python:3.9-slim
 
-# Install system dependencies
-# splat: RF analysis tool
-# gdal-bin, libgdal-dev: Geospatial library (for rasterio compilation on ARM64)
-# gfortran, libopenblas-dev: For scipy compilation on ARM64
-# wget, unzip: For downloading terrain data
-# build-essential: For compiling Python packages
+# Runtime for Tile Server & RF Engine
+# Includes critical geospatial dependencies for ARM64 compatibility
 RUN apt-get update && apt-get install -y \
     splat \
     gdal-bin \

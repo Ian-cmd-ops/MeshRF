@@ -27,3 +27,10 @@ dist-ssr
 .env
 .env.local
 
+
+# OpenTopoData path
+opentopodata/
+
+# Build Artifacts
+rf-engine/__pycache__/
+AI_DEV_STARTUP_PROMPT.md

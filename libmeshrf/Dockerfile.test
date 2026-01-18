@@ -1,0 +1,18 @@
+FROM gcc:latest
+
+WORKDIR /app
+
+# Copy Source Code
+COPY . /app
+
+# Compile
+# Include: ./include, ./vendor/itm/include
+# Source: src/*.cpp, vendor/itm/src/*.cpp
+RUN g++ -std=c++17 -o meshrf_test \
+    -I./include \
+    -I./vendor/itm/include \
+    src/*.cpp \
+    vendor/itm/src/*.cpp
+
+# Run
+CMD ["./meshrf_test"]

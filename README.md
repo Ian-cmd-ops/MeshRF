@@ -1,4 +1,4 @@
-# meshRF 📡
+# meshRF 📡 v1.5
 
 A professional-grade RF propagation and link analysis tool designed for LoRa Mesh networks (Meshtastic, Reticulum, Sidewinder). Built with **React**, **Leaflet**, and a high-fidelity **Geodetic Physics Engine**.
 
@@ -14,15 +14,17 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
 - **Clutter Awareness**: Simulates signal loss through trees or urban "clutter" layers.
 - **Smart Updates**: Analysis only triggers when both TX and RX points are placed, minimizing unnecessary API calls.
 
-### 📍 Smart Location Optimization ⚠️ _In Development_
+### 📍 Smart Location Optimization
 
 - **Area Search**: Draw a bounding box on the map to automatically scan for optimal node placement.
-- **Heatmap Scoring**: Analyzes terrain and line-of-sight to suggest the best locations based on RF coverage. (Powered by the **RF Engine** background worker).
-- _Note: This feature is currently in active development and may have incomplete functionality._
+- **Top 5 Ranking**: Identifies the top 5 highest elevation points within the selected area, ranked by altitude.
+- **Visual Feedback**: Markers display their rank (1-5) directly on the map for easy identification.
 
 ### ⚡ Batch Operations
 
 - **Bulk Link Matrix**: Import a simple CSV of nodes (`Name, Lat, Lon`) and instantly compute link budgets for every possible pair.
+- **Intuitive UX**: Persistent TX/RX badges on the map and smart 3rd-click reset for rapid link evaluation.
+- **Minimize & Scroll**: Collapsible panel with localized scroll handling to handle large datasets without map interference.
 - **Automated Reporting**: Export detailed CSV reports containing RSSI, Signal Margin, and Clearance values for hundreds of potential links.
 
 ### 🛠️ Hardware Simulation
@@ -31,12 +33,11 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
 - **Radio Config**: Adjust Spreading Factor (SF), Bandwidth (BW), and Coding Rate (CR) to simulate real-world LoRa modulation (LongFast, ShortFast).
 - **Antenna Modeling**: Select standard antennas (Stubby, Dipole, Yagi) or input custom gain figures.
 
-### 🔭 Viewshed Analysis ⚠️ _In Development_
+### 🔭 Viewshed Analysis (🚧 Under Maintenance)
 
 - **WebGL-Powered Visualization**: Real-time viewshed overlay showing visible terrain from observer point.
-- **Dynamic Calculation**: Interactive observer placement with instant terrain visibility analysis.
-- **Red/Green Overlay**: Visual indication of obstructed (red) vs. visible (green) terrain areas.
-- _Note: This feature is currently in active development and may have incomplete functionality._
+- **Terrain-RGB Support**: Decodes standard Terrain-RGB tiles for efficient client-side rendering.
+- **Note**: This feature is currently disabled while backend tile-server dependencies are being updated.
 
 ### 🎨 Modern Experience
 
@@ -65,7 +66,6 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
    ```
 
 2. **Access the App**:
-
    - Frontend: `http://localhost:5173`
    - RF Engine API: `http://localhost:5001/docs` (Swagger UI)
 
@@ -78,9 +78,10 @@ docker compose -f docker-compose.dev.yml up --build
 3. **Elevation Data Configuration** (Optional):
 
    The application uses [OpenTopoData](https://www.opentopodata.org/) for elevation tiles. By default, it uses the public API (1000 requests/day). For unlimited access, you can:
-
    - Use a custom OpenTopoData instance
    - Self-host OpenTopoData with local SRTM data
+
+   👉 **[See Setup Guide](./OPENTOPO_GUIDE.md)** for instructions on hosting local elevation data.
 
    Configure via environment variables in `docker-compose.yml`:
 
