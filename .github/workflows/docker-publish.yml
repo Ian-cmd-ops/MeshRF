@@ -2,10 +2,10 @@ name: Docker
 
 on:
   push:
-    branches: ["main", "dev"]
+    branches: ["dev", "main"]
     tags: ["v*.*.*"]
   pull_request:
-    branches: ["main", "dev"]
+    branches: ["dev", "main"]
 
 env:
   REGISTRY: ghcr.io
@@ -31,17 +31,12 @@ jobs:
           - context: ./opentopodata
             image-suffix: "-opentopodata"
             dockerfile: ./opentopodata/docker/Dockerfile
-        platform:
-          - name: linux/amd64
-            tag-suffix: "-amd64"
-          - name: linux/arm64
-            tag-suffix: "-arm64"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -63,18 +58,16 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.component.image-suffix }}
           tags: |
-            type=ref,event=branch,suffix=${{ matrix.platform.tag-suffix }}
-            type=ref,event=tag,suffix=${{ matrix.platform.tag-suffix }}
-            type=raw,value=latest,enable={{is_default_branch}},suffix=${{ matrix.platform.tag-suffix }}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.component.context }}
           file: ${{ matrix.component.dockerfile }}
-          platforms: ${{ matrix.platform.name }}
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
