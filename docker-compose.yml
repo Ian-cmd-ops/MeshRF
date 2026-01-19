@@ -1,9 +1,9 @@
 services:
   app:
-    build: .
+    image: ghcr.io/d3mocide/meshrf:latest
     container_name: meshrf
-    # ports:
-    #   - "5173:80"
+    ports:
+      - "80:80"
     environment:
     # Hostname for reverse proxy
       - ALLOWED_HOSTS=localhost
@@ -12,17 +12,13 @@ services:
     # Default Map Center (Portland, OR)
       - VITE_MAP_LAT=45.5152
       - VITE_MAP_LNG=-122.6784
-    # No volumes needed for production artifact
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
-    # command: npm run dev -- --host
+    restart: always
+    networks:
+      - meshrf_net
 
   rf-engine:
-    build: ./rf-engine
+    image: ghcr.io/d3mocide/meshrf-rf-engine:latest
     container_name: rf_engine
-    ports:
-      - "5001:5001"
     environment:
       # Elevation Data Configuration
       # Using local OpenTopoData service
@@ -33,27 +29,30 @@ services:
       - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
     volumes:
       - ./cache:/app/cache
-
     restart: unless-stopped
     depends_on:
       - redis
+    networks:
+      - meshrf_net
 
   redis:
     image: redis:alpine
     user: root
-    ports:
-      - "6379:6379"
     volumes:
       - ./redis_data:/data
     restart: always
+    networks:
+      - meshrf_net
 
   opentopodata:
-    build:
-      context: ./opentopodata
-      dockerfile: docker/Dockerfile
+    image: ghcr.io/d3mocide/meshrf-opentopodata:latest
     container_name: opentopodata
-    ports:
-      - "5000:5000"
     volumes:
       - ./data/opentopodata:/app/data
     restart: unless-stopped
+    networks:
+      - meshrf_net
+
+networks:
+  meshrf_net:
+    driver: bridge

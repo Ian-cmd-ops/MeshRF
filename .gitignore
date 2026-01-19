@@ -22,6 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+eslint.config.js
 
 # Environment variables
 .env
@@ -33,4 +34,7 @@ opentopodata/
 
 # Build Artifacts
 rf-engine/__pycache__/
+redis_data
+docker-compose-astro.yml
 AI_DEV_STARTUP_PROMPT.md
+AI_Research
