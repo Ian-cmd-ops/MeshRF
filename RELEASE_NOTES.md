@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.6.1 - Hotfix: Docker Startup
+
+### 🐛 Bug Fixes
+
+- **OpenTopoData Submodule**: Updated the submodule reference to include critical Docker startup fixes (CRLF line endings and execution permissions) that were missed in the v1.6 tag.
+
+---
+
 ## v1.6 - Advanced Propagation & Asymmetric Config
 
 This release introduces professional-grade propagation modeling with the **Okumura-Hata** model and enables granular, per-node hardware configuration for asymmetric link analysis.
