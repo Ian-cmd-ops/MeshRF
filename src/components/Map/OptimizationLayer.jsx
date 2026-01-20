@@ -73,11 +73,13 @@ const OptimizationLayer = ({ active, setActive }) => {
                 // Transient success message
                 setNotification({ message: `Scan complete! Found ${result.locations.length} ideal spots.`, type: 'success', transient: true });
             } else {
-                 setNotification({ message: result.message || "Scan failed. Server returned an error.", type: 'error' });
+                setNotification({ message: result.message || "Scan failed. Server returned an error.", type: 'error' });
+                 setLocked(false); // Enable retry
             }
         } catch (err) {
             console.error(err);
             setNotification({ message: "Scan failed. Please try again.", type: 'error' });
+            setLocked(false); // Enable retry
         } finally {
             setLoading(false);
         }

@@ -12,9 +12,12 @@ export const optimizeLocation = async (bounds, freq, height) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                min_lat, min_lon, max_lat, max_lon,
-                frequency_mhz: freq,
-                height_meters: height
+                min_lat: Number(min_lat),
+                min_lon: Number(min_lon),
+                max_lat: Number(max_lat),
+                max_lon: Number(max_lon),
+                frequency_mhz: Number(freq),
+                height_meters: Number(height)
             })
         });
         const initialData = await response.json();

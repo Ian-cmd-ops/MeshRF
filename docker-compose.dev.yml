@@ -13,6 +13,7 @@ services:
     environment:
       - VITE_MAP_LAT=45.5152
       - VITE_MAP_LNG=-122.6784
+      - API_TARGET=http://rf-engine:5001
     networks:
       - meshrf_net
 

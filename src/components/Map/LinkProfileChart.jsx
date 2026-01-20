@@ -1,6 +1,6 @@
 import React from 'react';
 
-const LinkProfileChart = ({ profileWithStats, width = 200, height = 100, units = 'metric' }) => { // Added units default
+const LinkProfileChart = ({ profileWithStats, width = 200, height = 100, units = 'metric', margin = 100, losColor }) => { 
     if (!profileWithStats || profileWithStats.length === 0) return null;
 
     // Unit Conversion Helpers
@@ -9,6 +9,15 @@ const LinkProfileChart = ({ profileWithStats, width = 200, height = 100, units =
     const heightFactor = isImperial ? 3.28084 : 1;
     const distUnit = isImperial ? 'mi' : 'km';
     const heightUnit = isImperial ? 'ft' : 'm';
+
+    // Determine LOS Line Color based on Margin (if not provided)
+    // Fallback logic if losColor is missing
+    let finalLosColor = losColor;
+    if (!finalLosColor) {
+        finalLosColor = '#00ff41'; // Green (Excellent)
+        if (margin < 0) finalLosColor = '#ff0000'; // Red (No Signal)
+        else if (margin < 10) finalLosColor = '#ffbf00'; // Amber (Marginal)
+    }
 
     let minElev = Math.min(
         ...profileWithStats.map(p => p.effectiveTerrain),
@@ -79,8 +88,8 @@ const LinkProfileChart = ({ profileWithStats, width = 200, height = 100, units =
                 {/* Fresnel Zone Bottom Limit */}
                 <path d={f1Path} fill="none" stroke="#00f2ff" strokeWidth="1" strokeDasharray="3,3" opacity="0.5" />
 
-                {/* LOS Line */}
-                <path d={losPath} fill="none" stroke="#00ff41" strokeWidth="2" />
+                {/* LOS Line - Colored by Link Margin */}
+                <path d={losPath} fill="none" stroke={finalLosColor} strokeWidth="2" />
 
                 {/* Axis Labels (Improved Alignment) */}
                 <text 

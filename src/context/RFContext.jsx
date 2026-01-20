@@ -8,19 +8,65 @@ export const useRF = () => {
 };
 
 export const RFProvider = ({ children }) => {
-    // Selections
-    const [selectedRadioPreset, setSelectedRadioPreset] = useState('MESHCORE_PNW');
-    const [selectedDevice, setSelectedDevice] = useState('HELTEC_V3');
-    const [selectedAntenna, setSelectedAntenna] = useState('STUBBY');
+    // --- NODE-SPECIFIC CONFIGURATION ---
+    // GLOBAL: Edit defaults (applies to both if they haven't been overridden? Or just applies to both for now)
+    // A/B: Edit specific node
+    const [editMode, setEditMode] = useState('GLOBAL'); // 'GLOBAL', 'A', 'B'
+
+    const DEFAULT_CONFIG = {
+        device: 'HELTEC_V3',
+        antenna: 'STUBBY',
+        txPower: 20,
+        antennaHeight: 5,
+        antennaGain: ANTENNA_PRESETS.STUBBY.gain
+    };
+
+    const [nodeConfigs, setNodeConfigs] = useState({
+        A: { ...DEFAULT_CONFIG },
+        B: { ...DEFAULT_CONFIG }
+    });
+
+    // Helper to update state based on current mode
+    const updateConfig = (key, value) => {
+        setNodeConfigs(prev => {
+            const newConfigs = { ...prev };
+            if (editMode === 'GLOBAL') {
+                // Global updates both nodes
+                newConfigs.A[key] = value;
+                newConfigs.B[key] = value;
+            } else {
+                newConfigs[editMode][key] = value;
+            }
+            return newConfigs;
+        });
+    };
+
+    // Get current values based on mode
+    // If Global, we show A's values as representative (or defaults if we tracked them separately)
+    const currentConfig = editMode === 'GLOBAL' ? nodeConfigs.A : nodeConfigs[editMode];
+
+    // Proxies for compatibility with existing components
+    const selectedDevice = currentConfig.device;
+    const setSelectedDevice = (val) => updateConfig('device', val);
+
+    const selectedAntenna = currentConfig.antenna;
+    const setSelectedAntenna = (val) => updateConfig('antenna', val);
+
+    const txPower = currentConfig.txPower;
+    const setTxPower = (val) => updateConfig('txPower', val);
+
+    const antennaHeight = currentConfig.antennaHeight;
+    const setAntennaHeight = (val) => updateConfig('antennaHeight', val);
+
+    const antennaGain = currentConfig.antennaGain;
+    const setAntennaGain = (val) => updateConfig('antennaGain', val);
+    
+    // --- END NODE SPECIFIC ---
+
     
     // Batch Processing
     const [batchNodes, setBatchNodes] = useState([]); // Array of {id, name, lat, lng}
     const [showBatchPanel, setShowBatchPanel] = useState(false);
-
-    // Config Values
-    const [txPower, setTxPower] = useState(20);
-    const [antennaHeight, setAntennaHeight] = useState(5); // always stored in meters
-    const [antennaGain, setAntennaGain] = useState(ANTENNA_PRESETS.STUBBY.gain);
     
     // Preferences
     const [units, setUnits] = useState('imperial'); // 'metric' or 'imperial'
@@ -34,13 +80,12 @@ export const RFProvider = ({ children }) => {
     const [recalcTimestamp, setRecalcTimestamp] = useState(0);
     const triggerRecalc = () => setRecalcTimestamp(Date.now());
     
-    // Radio Params
+    // Radio Params (SHARED LINK PARAMETERS)
+    const [selectedRadioPreset, setSelectedRadioPreset] = useState('MESHCORE_PNW');
     const [freq, setFreq] = useState(RADIO_PRESETS.MESHCORE_PNW.freq);
     const [bw, setBw] = useState(RADIO_PRESETS.MESHCORE_PNW.bw);
     const [sf, setSf] = useState(RADIO_PRESETS.MESHCORE_PNW.sf);
     const [cr, setCr] = useState(RADIO_PRESETS.MESHCORE_PNW.cr);
-
-    // Sync Logic (Migrated from Sidebar)
     
     // 1. Radio Preset Sync
     useEffect(() => {
@@ -51,52 +96,82 @@ export const RFProvider = ({ children }) => {
             setSf(preset.sf);
             setCr(preset.cr);
             if(preset.power) {
-                const deviceMax = DEVICE_PRESETS[selectedDevice].tx_power_max;
-                setTxPower(Math.min(preset.power, deviceMax));
+               updateConfig('txPower', preset.power);
             }
         }
-    }, [selectedRadioPreset]); // Intentionally removed selectedDevice to prevent loop, handled below
+    }, [selectedRadioPreset]);
 
     // 2. Device Cap Sync
     useEffect(() => {
-        const deviceMax = DEVICE_PRESETS[selectedDevice].tx_power_max;
-        if (txPower > deviceMax) {
-            setTxPower(deviceMax);
-        }
-    }, [selectedDevice]);
+        setNodeConfigs(prev => {
+            const next = { ...prev };
+            ['A', 'B'].forEach(node => {
+                const deviceMax = DEVICE_PRESETS[next[node].device].tx_power_max;
+                if (next[node].txPower > deviceMax) {
+                    next[node].txPower = deviceMax;
+                }
+            });
+            return next;
+        });
+    }, [nodeConfigs.A.device, nodeConfigs.B.device]); // Dependency on devices
+
 
     // 3. Antenna preset sync
     useEffect(() => {
-        const antenna = ANTENNA_PRESETS[selectedAntenna];
-        if (selectedAntenna !== 'CUSTOM') {
-            setAntennaGain(antenna.gain);
-        }
-    }, [selectedAntenna]);
+        setNodeConfigs(prev => {
+             const next = { ...prev };
+             let changed = false;
 
-    // Derived Values
+             ['A', 'B'].forEach(node => {
+                 const type = next[node].antenna;
+                 const currentGain = next[node].antennaGain;
+                 if (type !== 'CUSTOM') {
+                     const correctGain = ANTENNA_PRESETS[type].gain;
+                     if (currentGain !== correctGain) {
+                         next[node].antennaGain = correctGain;
+                         changed = true;
+                     }
+                 }
+             });
+             
+             return changed ? next : prev;
+        });
+    }, [nodeConfigs.A.antenna, nodeConfigs.B.antenna]);
+
+    // Derived Values (Active Context)
     const cableLoss = DEVICE_PRESETS[selectedDevice].loss || 0;
     const erp = (txPower + antennaGain - cableLoss).toFixed(1);
 
     const value = {
+        // Mode State
+        editMode, setEditMode,
+        nodeConfigs, 
+        
+        // Proxied Accessors (UI Compatibility)
         selectedRadioPreset, setSelectedRadioPreset,
         selectedDevice, setSelectedDevice,
         selectedAntenna, setSelectedAntenna,
-        batchNodes, setBatchNodes,
         txPower, setTxPower,
         antennaHeight, setAntennaHeight,
         antennaGain, setAntennaGain,
+        
+        // Shared Params
         freq, setFreq,
         bw, setBw,
         sf, setSf,
-
         cr, setCr,
+        
+        // Derived & Globals
         erp, cableLoss,
         units, setUnits,
         mapStyle, setMapStyle,
         kFactor, setKFactor,
         clutterHeight, setClutterHeight,
+        
+        // Batch
+        batchNodes, setBatchNodes,
         showBatchPanel, setShowBatchPanel,
-        setBatchNodes,
+        
         recalcTimestamp, triggerRecalc
     };
 

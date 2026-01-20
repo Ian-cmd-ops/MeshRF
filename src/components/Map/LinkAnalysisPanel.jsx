@@ -1,7 +1,7 @@
 import React from 'react';
 import LinkProfileChart from './LinkProfileChart';
 
-const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units }) => { 
+const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagationSettings, setPropagationSettings }) => { 
     if (nodes.length !== 2) return null;
 
     // Conversions
@@ -17,43 +17,51 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units }) => {
     // WISP Ratings
     const quality = linkStats.linkQuality || 'Obstructed (-)';
     
-    let statusColor = '#ff0000'; // Default Red
-    let statusText = quality.toUpperCase();
+    // Determine RF Status based on calibrated LoRa thresholds
+    let rfColor = '#ff0000';
+    let rfText = 'NO SIGNAL';
 
-    if (quality.includes('Excellent')) {
-        statusColor = '#00ff41'; // Green
-    } else if (quality.includes('Good')) {
-        statusColor = '#00ff41'; // Green (maybe slightly different?)
-    } else if (quality.includes('Marginal')) {
-        statusColor = '#ffbf00'; // Amber
-    } else if (quality.includes('Obstructed')) {
-         statusColor = '#ff0000'; // Red
+    if (margin >= 10) {
+        rfColor = '#00ff41'; 
+        rfText = 'EXCELLENT +++';
+    } else if (margin >= 5) {
+        rfColor = '#00ff41'; 
+        rfText = 'GOOD ++';
+    } else if (margin >= 0) {
+        rfColor = '#eeff00ff'; 
+        rfText = 'FAIR +';
+    } else if (margin >= -10) {
+        rfColor = '#ffbf00'; 
+        rfText = 'MARGINAL -+';
+    } else if (margin < -10) {
+        rfColor = '#ff0000'; 
+        rfText = 'NO SIGNAL -';
     }
-    
-    // Override if Margin is bad (even if Fresnel is clear)
-    if (margin < 0) {
-        statusColor = '#ff0000';
-        statusText = 'NO SIGNAL';
-    } else if (margin < 10 && !quality.includes('Obstructed')) {
-         // If margin is low but LOS is clear, warn
-         if (statusColor === '#00ff41') statusColor = '#ffbf00';
-         if (!statusText.includes('MARGINAL')) statusText += ' (LOW SNR)';
+
+    let statusColor = rfColor;
+    let statusText = rfText;
+
+    // Apply Model Constraints
+    if (propagationSettings?.model !== 'Hata') {
+        if (quality.includes('Obstructed')) {
+            statusColor = '#ff0000';
+            statusText = 'OBSTRUCTED (LOS)';
+        }
     }
 
     // Responsive Chart Logic
-    const [panelSize, setPanelSize] = React.useState({ width: 300, height: 350 });
-    const [dimensions, setDimensions] = React.useState({ width: 268, height: 100 });
+    const [panelSize, setPanelSize] = React.useState({ width: 340, height: 520 });
     const panelRef = React.useRef(null);
     const draggingRef = React.useRef(false);
     const lastPosRef = React.useRef({ x: 0, y: 0 });
 
-    // Update Chart Dimensions when Panel Size changes
-    React.useEffect(() => {
-        setDimensions({
-            width: Math.max(260, panelSize.width - 32),
-            height: Math.max(100, panelSize.height - 250)
-        });
-    }, [panelSize]);
+    // Calculate Dimensions directly (Derived State)
+    const layoutOffset = propagationSettings?.model === 'Hata' ? 350 : 310;
+    
+    const dimensions = {
+        width: Math.max(260, panelSize.width - 32),
+        height: Math.max(100, panelSize.height - layoutOffset)
+    };
 
     // Resize Handler
     const handleMouseDown = (e) => {
@@ -73,15 +81,12 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units }) => {
         lastPosRef.current = { x: e.clientX, y: e.clientY };
 
         setPanelSize(prev => {
-            // Dragging Left (negative dx) should INCREASE width (since anchored right)
-            // Dragging Down (positive dy) should INCREASE height
-            
             const newWidth = prev.width - dx; 
             const newHeight = prev.height + dy;
 
             return {
                 width: Math.max(300, newWidth),
-                height: Math.max(300, newHeight)
+                height: Math.max(450, newHeight)
             };
         });
     };
@@ -157,6 +162,37 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units }) => {
                 </span>
             </div>
 
+            {/* Propagation Configuration */}
+            {propagationSettings && (
+                <div style={{ mb: '12px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', marginBottom: '12px' }}>
+                     <div style={{ display: 'flex', gap: '8px', marginBottom: propagationSettings.model === 'Hata' ? '8px' : '0' }}>
+                         <select 
+                             value={propagationSettings.model}
+                             onChange={(e) => setPropagationSettings(prev => ({ ...prev, model: e.target.value }))}
+                             style={{ flex: 1, background: '#222', color: '#fff', border: '1px solid #444', padding: '4px', borderRadius: '4px', fontSize: '0.8em' }}
+                         >
+                             <option value="FSPL">Free Space (Optimistic)</option>
+                             <option value="Hata">Okumura-Hata (Realistic)</option>
+                         </select>
+                     </div>
+                     {propagationSettings.model === 'Hata' && (
+                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                             <span style={{ fontSize: '0.75em', color: '#888' }}>Env:</span>
+                             <select 
+                                 value={propagationSettings.environment}
+                                 onChange={(e) => setPropagationSettings(prev => ({ ...prev, environment: e.target.value }))}
+                                 style={{ flex: 1, background: '#222', color: '#fff', border: '1px solid #444', padding: '4px', borderRadius: '4px', fontSize: '0.8em' }}
+                             >
+                                 <option value="urban_small">Urban (Small/Medium)</option>
+                                 <option value="urban_large">Urban (Large)</option>
+                                 <option value="suburban">Suburban</option>
+                                 <option value="rural">Rural / Open</option>
+                             </select>
+                         </div>
+                     )}
+                </div>
+            )}
+
             {/* Stats Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.9em', marginBottom: '16px', flexShrink: 0 }}>
                 <div>
@@ -191,6 +227,8 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units }) => {
                             width={dimensions.width}
                             height={dimensions.height}
                             units={units}
+                            margin={margin}
+                            losColor={statusColor}
                         />
                     </div>
                 )}

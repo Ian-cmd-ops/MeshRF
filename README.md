@@ -1,4 +1,4 @@
-# meshRF 📡 v1.5
+# meshRF 📡 v1.6
 
 A professional-grade RF propagation and link analysis tool designed for LoRa Mesh networks (Meshtastic, Reticulum, Sidewinder). Built with **React**, **Leaflet**, and a high-fidelity **Geodetic Physics Engine**.
 
@@ -9,10 +9,11 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
 ### 📡 Advanced Link Analysis
 
 - **Geodetic Physics Engine**: Calculates **Earth Bulge** and effective terrain height based on link distance and configurable **K-Factor**.
-- **WISP-Grade Quality**: Evaluates links using the strict **60% Fresnel Zone Clearance** rule (Excellent/Good/Marginal/Obstructed).
+- **Okumura-Hata Model**: **[NEW]** Empirical path loss modeling for non-LOS urban/suburban environments (150-1500MHz).
+- **Asymmetric Links**: **[NEW]** Configure **Node A (TX)** and **Node B (RX)** with different hardware (power, gain, height) for realistic base-to-mobile analysis.
 - **Multi-Variable Profile**: Visualizes Terrain, Earth Curvature, Line of Sight (LOS), and Fresnel Zones on a dynamic 2D chart.
 - **Clutter Awareness**: Simulates signal loss through trees or urban "clutter" layers.
-- **Smart Updates**: Analysis only triggers when both TX and RX points are placed, minimizing unnecessary API calls.
+- **Smart Updates**: Analysis only triggers when both TX and RX points are placed, or update button is pressed, minimizing unnecessary API calls.
 
 ### 📍 Smart Location Optimization
 
@@ -66,7 +67,7 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
    ```
 
 2. **Access the App**:
-   - Frontend: `http://localhost:5173`
+   - Frontend: `http://localhost` (Port 80)
    - RF Engine API: `http://localhost:5001/docs` (Swagger UI)
 
 **For Development** - Builds from source with live reloading:
@@ -75,21 +76,24 @@ A professional-grade RF propagation and link analysis tool designed for LoRa Mes
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-3. **Elevation Data Configuration** (Optional):
+(Access Frontend at `http://localhost:5173`)
 
-   The application uses [OpenTopoData](https://www.opentopodata.org/) for elevation tiles. By default, it uses the public API (1000 requests/day). For unlimited access, you can:
-   - Use a custom OpenTopoData instance
-   - Self-host OpenTopoData with local SRTM data
+3. **Elevation Data Configuration**:
 
-   👉 **[See Setup Guide](./OPENTOPO_GUIDE.md)** for instructions on hosting local elevation data.
+   The stack includes a local **OpenTopoData** service to avoid running into public API rate limits.
+
+   👉 **[See Setup Guide](./OPENTOPO_GUIDE.md)** for instructions on downloading elevation data.
 
    Configure via environment variables in `docker-compose.yml`:
 
    ```yaml
    rf-engine:
      environment:
-       - ELEVATION_API_URL=${ELEVATION_API_URL:-https://api.opentopodata.org}
-       - ELEVATION_DATASET=${ELEVATION_DATASET:-srtm30m}
+       # Points to the internal local service by default
+       - ELEVATION_API_URL=http://opentopodata:5000
+
+       # Dataset to use (must match downloaded files in ./data/opentopodata)
+       - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
    ```
 
    Available datasets: `srtm30m`, `srtm90m`, `aster30m`, `ned10m` (US only)

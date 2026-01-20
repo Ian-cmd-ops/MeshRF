@@ -1,4 +1,4 @@
-import * as turf from '@turf/turf';
+import * as turf from "@turf/turf";
 
 /**
  * Calculate Free Space Path Loss (FSPL) in dB
@@ -19,12 +19,16 @@ export const calculateFSPL = (distanceKm, freqMHz) => {
  * @param {number} pointDistKm - Distance from one end to the point of interest (default: midpoint)
  * @returns {number} Radius in meters
  */
-export const calculateFresnelRadius = (distanceKm, freqMHz, pointDistKm = null) => {
+export const calculateFresnelRadius = (
+  distanceKm,
+  freqMHz,
+  pointDistKm = null,
+) => {
   if (!pointDistKm) pointDistKm = distanceKm / 2;
-  const d1 = pointDistKm; 
-  const d2 = distanceKm - pointDistKm; 
+  const d1 = pointDistKm;
+  const d2 = distanceKm - pointDistKm;
   const fGHz = freqMHz / 1000;
-  
+
   // r = 17.32 * sqrt((d1 * d2) / (f * D))
   // d1, d2, D in km, f in GHz, r in meters
   return 17.32 * Math.sqrt((d1 * d2) / (fGHz * distanceKm));
@@ -42,36 +46,43 @@ export const calculateFresnelRadius = (distanceKm, freqMHz, pointDistKm = null) 
  * @param {number} params.freqMHz - Frequency in MHz
  * @param {number} params.sf - Spreading Factor (for sensitivity)
  * @param {number} params.bw - Bandwidth in kHz (for sensitivity)
+ * @param {number} [params.pathLossOverride=null] - Optional override for path loss in dB. If provided, FSPL is not calculated.
  * @returns {Object} { rssi, fspl, snrLimit, linkMargin }
  */
 export const calculateLinkBudget = ({
-  txPower, txGain, txLoss, 
-  rxGain, rxLoss, 
-  distanceKm, freqMHz,
-  sf, bw
+  txPower,
+  txGain,
+  txLoss,
+  rxGain,
+  rxLoss,
+  distanceKm,
+  freqMHz,
+  sf,
+  bw,
+  pathLossOverride = null
 }) => {
-  const fspl = calculateFSPL(distanceKm, freqMHz);
-  
+  const fspl = pathLossOverride !== null ? pathLossOverride : calculateFSPL(distanceKm, freqMHz);
+
   // Estimated RSSI at receiver
-  // RSSI = Ptx + Gtx - Ltx - FSPL + Grx - Lrx
+  // RSSI = Ptx + Gtx - Ltx - PathLoss + Grx - Lrx
   const rssi = txPower + txGain - txLoss - fspl + rxGain - rxLoss;
 
   // Receiver Sensitivity Calculation (Semtech SX1262 approx)
   // S = -174 + 10log10(BW) + NF + SNR_limit
-  // Standard LoRa sensitivity approximation: 
+  // Standard LoRa sensitivity approximation:
   // SF7/125kHz ~ -123dBm
   // Rule of thumb: Higher SF = Lower (better) sensitivity. Double BW = 3dB worse.
-  
+
   // Base sensitivity for SF7, 125kHz
-  let baseSensitivity = -123; 
-  
+  let baseSensitivity = -123;
+
   // Adjust for Bandwidth: 10 * log10(BW_meas / BW_ref)
   // If BW goes 125 -> 250, noise floor rises by 3dB, sensitivity worsens by 3dB
   const bwFactor = 10 * Math.log10(bw / 125);
-  
+
   // Adjust for Spreading Factor: Each step adds ~2.5dB of process gain
   // SF7 is base. SF12 is 5 steps higher.
-  const sfFactor = (sf - 7) * -2.5; 
+  const sfFactor = (sf - 7) * -2.5;
 
   const sensitiveLimit = baseSensitivity + bwFactor + sfFactor;
 
@@ -81,7 +92,7 @@ export const calculateLinkBudget = ({
     rssi: parseFloat(rssi.toFixed(2)),
     fspl: parseFloat(fspl.toFixed(2)),
     sensitivity: parseFloat(sensitiveLimit.toFixed(2)),
-    margin: parseFloat(linkMargin.toFixed(2))
+    margin: parseFloat(linkMargin.toFixed(2)),
   };
 };
 
@@ -96,9 +107,9 @@ export const calculateLinkBudget = ({
 export const calculateFresnelPolygon = (p1, p2, freqMHz, steps = 30) => {
   const startPt = turf.point([p1.lng, p1.lat]);
   const endPt = turf.point([p2.lng, p2.lat]);
-  const totalDistance = turf.distance(startPt, endPt, { units: 'kilometers' });
+  const totalDistance = turf.distance(startPt, endPt, { units: "kilometers" });
   const bearing = turf.bearing(startPt, endPt);
-  
+
   // Left and Right boundaries
   const leftSide = [];
   const rightSide = [];
@@ -106,33 +117,38 @@ export const calculateFresnelPolygon = (p1, p2, freqMHz, steps = 30) => {
   for (let i = 0; i <= steps; i++) {
     const fraction = i / steps;
     const dist = totalDistance * fraction; // Current distance along path
-    
+
     // Calculate Fresnel Radius at this point
     // totalDistance must be in Km for Fresnel calc
     // dist is distance from source
     // Fresnel Radius calc expects total distance and distance from source
-    
+
     // Warning: calculateFresnelRadius returns METERS
     const rMeters = calculateFresnelRadius(totalDistance, freqMHz, dist);
     const rKm = rMeters / 1000;
 
     // Find point on the line
-    const pointOnLine = turf.destination(startPt, dist, bearing, { units: 'kilometers' });
-    
+    const pointOnLine = turf.destination(startPt, dist, bearing, {
+      units: "kilometers",
+    });
+
     // Perpendicular points
     // Bearing - 90 is Left, Bearing + 90 is Right
-    const leftPt = turf.destination(pointOnLine, rKm, bearing - 90, { units: 'kilometers' });
-    const rightPt = turf.destination(pointOnLine, rKm, bearing + 90, { units: 'kilometers' });
+    const leftPt = turf.destination(pointOnLine, rKm, bearing - 90, {
+      units: "kilometers",
+    });
+    const rightPt = turf.destination(pointOnLine, rKm, bearing + 90, {
+      units: "kilometers",
+    });
 
     // Leaflet wants [lat, lng]
-    leftSide.push(leftPt.geometry.coordinates.reverse()); 
+    leftSide.push(leftPt.geometry.coordinates.reverse());
     // We unshift rightSide to keep polygon drawing order correct (CCW)
     rightSide.unshift(rightPt.geometry.coordinates.reverse());
   }
 
   return [...leftSide, ...rightSide];
 };
-
 
 /**
  * Calculate Earth Bulge at a specific point
@@ -156,7 +172,6 @@ export const calculateEarthBulge = (distKm, totalDistKm, kFactor = 1.33) => {
   return hKm * 1000;
 };
 
-
 /**
  * Analyze Link Profile for Obstructions (Geodetic + Clutter + Fresnel Standards)
  * @param {Array} profile - Array of {distance, elevation} points (distance in km, elevation in m)
@@ -167,26 +182,34 @@ export const calculateEarthBulge = (distKm, totalDistKm, kFactor = 1.33) => {
  * @param {number} clutterHeight - Uniform Clutter Height (e.g., Trees/Urban) default 0
  * @returns {Object} { minClearance, isObstructed, linkQuality, profileWithStats }
  */
-export const analyzeLinkProfile = (profile, freqMHz, txHeightAGL, rxHeightAGL, kFactor = 1.33, clutterHeight = 0) => {
-  if (!profile || profile.length === 0) return { isObstructed: false, minClearance: 999 };
+export const analyzeLinkProfile = (
+  profile,
+  freqMHz,
+  txHeightAGL,
+  rxHeightAGL,
+  kFactor = 1.33,
+  clutterHeight = 0,
+) => {
+  if (!profile || profile.length === 0)
+    return { isObstructed: false, minClearance: 999 };
 
   const startPt = profile[0];
   const endPt = profile[profile.length - 1];
-  const totalDistKm = endPt.distance; 
+  const totalDistKm = endPt.distance;
 
-  const txH = startPt.elevation + txHeightAGL; 
+  const txH = startPt.elevation + txHeightAGL;
   const rxH = endPt.elevation + rxHeightAGL;
 
   let minClearance = 9999;
   let isObstructed = false;
   let worstFresnelRatio = 1.0; // 1.0 = Fully Clear. < 0.6 = Bad.
 
-  const profileWithStats = profile.map(pt => {
+  const profileWithStats = profile.map((pt) => {
     const d = pt.distance; // km
-    
+
     // 1. Calculate Earth Bulge
     const bulge = calculateEarthBulge(d, totalDistKm, kFactor);
-    
+
     // 2. Effective Terrain Height (Terrain + Bulge + Clutter)
     const effectiveTerrain = pt.elevation + bulge + clutterHeight;
 
@@ -201,10 +224,10 @@ export const analyzeLinkProfile = (profile, freqMHz, txHeightAGL, rxHeightAGL, k
     // Positive = Clear of F1. Negative = Inside F1 or Obstructed.
     const distFromCenter = losHeight - effectiveTerrain;
     const clearance = distFromCenter - f1;
-    
+
     // Ratio of Clearance / F1 Radius (for quality check)
     // 60% rule means distFromCenter >= 0.6 * F1
-    const fRatio = f1 > 0 ? (distFromCenter / f1) : 1; 
+    const fRatio = f1 > 0 ? distFromCenter / f1 : 1;
 
     if (fRatio < worstFresnelRatio) worstFresnelRatio = fRatio;
     if (clearance < minClearance) minClearance = clearance;
@@ -215,29 +238,112 @@ export const analyzeLinkProfile = (profile, freqMHz, txHeightAGL, rxHeightAGL, k
     return {
       ...pt,
       earthBulge: bulge,
-      effectiveTerrain, 
+      effectiveTerrain,
       losHeight,
       f1Radius: f1,
       clearance,
-      fresnelRatio: fRatio
+      fresnelRatio: fRatio,
     };
   });
 
   // Determine Link Quality String
   // Excellent (>0.8), Good (>0.6), Marginal (>0), Obstructed (<=0)
-  
+
   let linkQuality = "Obstructed";
   if (worstFresnelRatio >= 0.8) linkQuality = "Excellent (+++)";
-  else if (worstFresnelRatio >= 0.6) linkQuality = "Good (++)"; // 60% rule
-  else if (worstFresnelRatio > 0) linkQuality = "Marginal (+)"; // Visual LOS, but heavy Fresnel
+  else if (worstFresnelRatio >= 0.6)
+    linkQuality = "Good (++)"; // 60% rule
+  else if (worstFresnelRatio > 0)
+    linkQuality = "Marginal (+)"; // Visual LOS, but heavy Fresnel
   else linkQuality = "Obstructed (-)"; // No Visual LOS
 
   return {
     minClearance: parseFloat(minClearance.toFixed(1)),
     isObstructed,
     linkQuality,
-    profileWithStats
+    profileWithStats,
   };
 };
 
+/**
+ * Calculate Mobile Station Height Correction Factor a(hm) for Okumura-Hata
+ * @param {number} freqMHz
+ * @param {number} rxHeightM
+ * @param {string} environment
+ * @returns {number} Correction factor inside the formula
+ */
+const _calculateMobileHeightCorrection = (freqMHz, rxHeightM, environment) => {
+  // For small/medium city
+  // a(hm) = (1.1 * log(f) - 0.7) * hm - (1.56 * log(f) - 0.8)
+  const logF = Math.log10(freqMHz);
 
+  if (environment === "urban_large") {
+    // Large city rules:
+    // f <= 200MHz: a(hm) = 8.29 * (log(1.54 * hm))^2 - 1.1
+    // f >= 400MHz: a(hm) = 3.2 * (log(11.75 * hm))^2 - 4.97
+    // We are usually 915MHz (>= 400)
+    if (freqMHz >= 400) {
+      return 3.2 * Math.pow(Math.log10(11.75 * rxHeightM), 2) - 4.97;
+    } else {
+      return 8.29 * Math.pow(Math.log10(1.54 * rxHeightM), 2) - 1.1;
+    }
+  }
+
+  // Default / Small-Medium City / Suburban / Rural base correction
+  return (1.1 * logF - 0.7) * rxHeightM - (1.56 * logF - 0.8);
+};
+
+/**
+ * Calculate Okumura-Hata Path Loss (Empirical)
+ * Valid for: 150-1500 MHz, 1-20km (often stretched to 100km), Tx 30-200m, Rx 1-10m
+ * @param {number} distanceKm - Link Distance
+ * @param {number} freqMHz - Frequency
+ * @param {number} txHeightM - Transmitter Height (Effective)
+ * @param {number} rxHeightM - Receiver Height (Effective)
+ * @param {string} environment - 'urban_small', 'urban_large', 'suburban', 'rural'
+ * @returns {number} Path Loss in dB
+ */
+export const calculateOkumuraHata = (
+  distanceKm,
+  freqMHz,
+  txHeightM,
+  rxHeightM,
+  environment = "suburban",
+) => {
+  if (distanceKm <= 0.1) return calculateFSPL(distanceKm, freqMHz); // Fallback for very short links
+
+  // Hata restrictions (technically):
+  // f: 150-1500 MHz (Meshtastic 433/868/915 is perfect)
+  // hb: 30-200m (We accept lower, formula holds but precision degrades)
+  // hm: 1-10m
+  // d: 1-20 km
+
+  // Clamp heights to avoid log(0)
+  const hb = Math.max(1, txHeightM);
+  const hm = Math.max(1, rxHeightM);
+  const d = Math.max(0.1, distanceKm);
+  const f = freqMHz;
+
+  const logF = Math.log10(f);
+  const logHb = Math.log10(hb);
+  const logD = Math.log10(d);
+
+  // 1. Calculate Urban Loss (Basis)
+  // Lu = 69.55 + 26.16*log(f) - 13.82*log(hb) - a(hm) + (44.9 - 6.55*log(hb))*log(d)
+  const a_hm = _calculateMobileHeightCorrection(f, hm, environment);
+
+  let loss =
+    69.55 + 26.16 * logF - 13.82 * logHb - a_hm + (44.9 - 6.55 * logHb) * logD;
+
+  // 2. Apply Environmental Extensions
+  if (environment === "suburban") {
+    // Lsub = Lu - 2*(log(f/28))^2 - 5.4
+    const val = Math.log10(f / 28);
+    loss = loss - 2 * (val * val) - 5.4;
+  } else if (environment === "rural") {
+    // Lrural = Lu - 4.78*(log(f))^2 + 18.33*log(f) - 40.94
+    loss = loss - 4.78 * (logF * logF) + 18.33 * logF - 40.94;
+  }
+
+  return parseFloat(loss.toFixed(2));
+};

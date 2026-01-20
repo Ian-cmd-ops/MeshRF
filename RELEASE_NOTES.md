@@ -1,5 +1,35 @@
 # Release Notes
 
+## v1.6 - Advanced Propagation & Asymmetric Config
+
+This release introduces professional-grade propagation modeling with the **Okumura-Hata** model and enables granular, per-node hardware configuration for asymmetric link analysis.
+
+### 📡 Advanced Propagation Modeling
+
+- **Okumura-Hata Model**: Added support for the Okumura-Hata empirical model (Urban, Suburban, Rural), ideal for calculating path loss in non-LOS environments (150-1500MHz).
+- **Hybrid Analysis**: Automatically switches between standard Fresnel/Earth Bulge physics and Hata models based on user selection.
+- **Environment Presets**: New "Urban Small", "Urban Large", "Suburban", and "Rural" presets that dynamically adjust path loss coefficients.
+
+### 🎛️ Per-Node Hardware Configuration
+
+- **Asymmetric Links**: You can now configure **Node A (TX)** and **Node B (RX)** independently.
+- **Granular Control**: Set different device types, antenna gains, and heights for each end of the link (e.g., a high-power base station vs. a handheld mobile unit).
+- **Global & Individual Modes**: Easily toggle between "Global" (sync) mode and individual node editing directly from the map or sidebar.
+
+### 🎨 Sidebar & UX Refinement
+
+- **Modular Layout**: Extracted **Batch Processing** into its own dedicated, persistent panel for better workflow separation.
+- **Collapsible Settings**: The general settings area (Units, Map Style, Environment) is now collapsible, reducing clutter and focusing attention on radio configuration.
+- **Visual Polish**: Improved divider spacing and border logic for a cleaner, "glassmorphic" aesthetic.
+
+### 🐛 Bug Fixes & Stability
+
+- **LinkLayer Crash**: Fixed a race condition where the map would crash if a link was analyzed before node state was fully initialized.
+- **OpenTopoData Startup**: Resolved an infinite restart loop in the Docker container caused by Windows CRLF line endings in entry scripts.
+- **Optimization Tool**: Fixed a 500 Error when running the "Find Ideal Spot" tool and ensured it correctly unlocks the map after failure.
+
+---
+
 ## v1.5 - Major Feature Update: Batch UX & Interface Refinement
 
 This version focuses on significant UX improvements for the Batch Node tool, enhanced interface controls with panel minimization, and overall system cleanup for a more responsive and professional feel.

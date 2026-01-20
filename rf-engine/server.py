@@ -122,35 +122,43 @@ def optimize_location_endpoint(req: OptimizeRequest):
     Find the best location (highest elevation) within the bounding box.
     Heuristic: Higher is generally better for RF coverage.
     """
-    # Grid search (10x10)
-    steps = 10
-    lat_step = (req.max_lat - req.min_lat) / steps
-    lon_step = (req.max_lon - req.min_lon) / steps
-    
-    candidates = []
-    
-    for i in range(steps + 1):
-        for j in range(steps + 1):
-            lat = req.min_lat + (i * lat_step)
-            lon = req.min_lon + (j * lon_step)
-            
-            # Simple elevation check
-            elev = tile_manager.get_elevation(lat, lon)
-            
-            candidates.append({
-                "lat": lat, 
-                "lon": lon, 
-                "elevation": elev,
-                "score": elev 
-            })
+    try:
+        # Grid search (10x10)
+        steps = 10
+        lat_step = (req.max_lat - req.min_lat) / steps
+        lon_step = (req.max_lon - req.min_lon) / steps
+        
+        candidates = []
+        
+        for i in range(steps + 1):
+            for j in range(steps + 1):
+                lat = req.min_lat + (i * lat_step)
+                lon = req.min_lon + (j * lon_step)
+                
+                # Simple elevation check
+                elev = tile_manager.get_elevation(lat, lon)
+                
+                candidates.append({
+                    "lat": lat, 
+                    "lon": lon, 
+                    "elevation": elev,
+                    "score": elev 
+                })
 
-    # Sort by elevation desc
-    candidates.sort(key=lambda x: x["elevation"], reverse=True)
-    
-    # Take top 5
-    top_results = candidates[:5]
+        # Sort by elevation desc
+        candidates.sort(key=lambda x: x["elevation"], reverse=True)
+        
+        # Take top 5
+        top_results = candidates[:5]
 
-    return {
-        "status": "success",
-        "locations": top_results
-    }
+        return {
+            "status": "success",
+            "locations": top_results
+        }
+    except Exception as e:
+        print(f"Optimize Error: {e}")
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500, 
+            content={"status": "error", "message": f"Server Error: {str(e)}"}
+        )

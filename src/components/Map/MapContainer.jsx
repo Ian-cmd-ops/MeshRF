@@ -6,7 +6,8 @@ import LinkLayer from './LinkLayer';
 import LinkAnalysisPanel from './LinkAnalysisPanel';
 import OptimizationLayer from './OptimizationLayer';
 import { useRF } from '../../context/RFContext';
-import { calculateLinkBudget } from '../../utils/rfMath';
+import { calculateLinkBudget, calculateOkumuraHata } from '../../utils/rfMath';
+import { DEVICE_PRESETS } from '../../data/presets';
 import * as turf from '@turf/turf';
 import DeckGLOverlay from './DeckGLOverlay';
 import WasmViewshedLayer from './WasmViewshedLayer';
@@ -69,13 +70,20 @@ const MapComponent = () => {
   const [coverageOverlay, setCoverageOverlay] = useState(null); // { url, bounds }
   const [toolMode, setToolMode] = useState('link'); // 'link', 'optimize', 'viewshed', 'none'
   const [viewshedObserver, setViewshedObserver] = useState(null); // Single Point for Viewshed Tool
+  const [isLinkLocked, setIsLinkLocked] = useState(false); // Default unlocked
   const [selectedBatchNodes, setSelectedBatchNodes] = useState([]); // Track selected batch nodes for linking: [{ id, role: 'TX' | 'RX' }]
   
+  // Propagation Model State
+  const [propagationSettings, setPropagationSettings] = useState({
+      model: 'Hata', // Default to Realistic
+      environment: 'urban_small' // Default to Urban
+  });
+
   // Wasm Viewshed Tool Hook
   const { runAnalysis, resultLayer, isCalculating } = useViewshedTool(toolMode === 'viewshed');
   
   // Calculate Budget at container level for Panel
-  const { txPower, antennaGain, freq, sf, bw, cableLoss, units, mapStyle, batchNodes, showBatchPanel, setShowBatchPanel, setBatchNodes } = useRF();
+  const { txPower: proxyTx, antennaGain: proxyGain, freq, sf, bw, cableLoss, units, mapStyle, batchNodes, showBatchPanel, setShowBatchPanel, setBatchNodes, setEditMode, nodeConfigs } = useRF();
   
   // Map Configs
   const MAP_STYLES = {
@@ -110,21 +118,41 @@ const MapComponent = () => {
           { units: 'kilometers' }
       );
 
+      // Determine Path Loss logic
+      let pathLossVal = null; // Default to FSPL (calculated inside if null)
+      
+      const configA = nodeConfigs.A;
+      const configB = nodeConfigs.B;
+
+      if (propagationSettings.model === 'Hata') {
+          // Use actual configured heights
+          // Okumura-Hata expects heights in meters (which we store)
+          pathLossVal = calculateOkumuraHata(
+              distance, 
+              freq, 
+              configA.antennaHeight, 
+              configB.antennaHeight, 
+              propagationSettings.environment
+            );
+      }
+
       budget = calculateLinkBudget({
-          txPower, 
-          txGain: antennaGain, 
-          txLoss: cableLoss,
-          rxGain: antennaGain, 
-          rxLoss: cableLoss,
+          txPower: configA.txPower, 
+          txGain: configA.antennaGain, 
+          txLoss: DEVICE_PRESETS[configA.device]?.loss || 0,
+          rxGain: configB.antennaGain, 
+          rxLoss: DEVICE_PRESETS[configB.device]?.loss || 0,
           distanceKm: distance, 
           freqMHz: freq,
-          sf, bw
+          sf, bw,
+          pathLossOverride: pathLossVal
       });
   }
 
   // Helper to reset all tool states (Clear View)
   const resetToolState = () => {
       setNodes([]); 
+      setIsLinkLocked(false);
       setLinkStats({ minClearance: 0, isObstructed: false, loading: false });
       setCoverageOverlay(null);
       setViewshedObserver(null);
@@ -187,6 +215,7 @@ const MapComponent = () => {
             setLinkStats={setLinkStats}
             setCoverageOverlay={setCoverageOverlay}
             active={toolMode === 'link'}
+            locked={isLinkLocked}
         />
         {coverageOverlay && (
              <ImageOverlay 
@@ -403,10 +432,41 @@ const MapComponent = () => {
       
       {/* Clear Link Button - Shows when link nodes exist */}
       {nodes.length > 0 && (
-          <div style={{ position: 'absolute', top: 65, left: 70, zIndex: 1000 }}>
+          <div style={{ position: 'absolute', top: 65, left: 70, zIndex: 1000, display: 'flex', gap: '8px' }}>
+              <button 
+                  onClick={() => setIsLinkLocked(!isLinkLocked)}
+                  style={{
+                      background: isLinkLocked ? '#00f2ff' : 'rgba(0, 0, 0, 0.6)',
+                      color: isLinkLocked ? '#000' : '#fff',
+                      border: '1px solid #00f2ff',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.85em',
+                      fontWeight: 600,
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                  }}
+              >
+                  {isLinkLocked ? (
+                      <>
+                        <span style={{ fontSize: '1.2em' }}>🔒</span> Locked
+                      </>
+                   ) : (
+                      <>
+                        <span style={{ fontSize: '1.2em' }}>🔓</span> Lock
+                      </>
+                   )}
+              </button>
+
               <button 
                   onClick={() => {
                       setNodes([]);
+                      setIsLinkLocked(false); // Reset lock on clear
+                      setEditMode('GLOBAL'); // Reset edit mode
                       setLinkStats({ minClearance: 0, isObstructed: false, loading: false });
                       setCoverageOverlay(null);
                       setSelectedBatchNodes([]); // Clear batch node selections
@@ -439,6 +499,8 @@ const MapComponent = () => {
               budget={budget}
               distance={distance}
               units={units}
+              propagationSettings={propagationSettings}
+              setPropagationSettings={setPropagationSettings}
           />
       )}
       

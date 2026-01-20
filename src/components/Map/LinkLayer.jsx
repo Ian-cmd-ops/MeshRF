@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useMapEvents, Marker, Polyline, Popup, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import { useRF } from '../../context/RFContext';
+import { DEVICE_PRESETS } from '../../data/presets';
 import { calculateLinkBudget, calculateFresnelRadius, calculateFresnelPolygon, analyzeLinkProfile } from '../../utils/rfMath';
 import { fetchElevationPath } from '../../utils/elevation';
 import useThrottledCalculation from '../../hooks/useThrottledCalculation';
@@ -23,121 +24,115 @@ const rxIcon = L.divIcon({
     iconAnchor: [10, 10]
 });
 
-const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverlay, active = true }) => {
+const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverlay, active = true, locked = false }) => {
     const { 
-        txPower, antennaGain, freq, sf, bw, cableLoss, antennaHeight,
-        kFactor, clutterHeight, recalcTimestamp
+        txPower: proxyTx, antennaGain: proxyGain, // we ignore proxies for calc
+        freq, sf, bw, cableLoss, antennaHeight,
+        kFactor, clutterHeight, recalcTimestamp,
+        editMode, setEditMode, nodeConfigs
     } = useRF();
 
-    // Throttled analysis function to avoid API spam during drag
-    // We explicitly invoke this instead of relying on useEffect on [nodes]
-    // to prevent rapid-fire execution.
-    const runAnalysis = useThrottledCalculation(async (currentNodes) => {
-        if (currentNodes.length !== 2) return;
+    // Refs for Manual Update Mode
+    const configRef = useRef({ nodeConfigs, freq, kFactor, clutterHeight });
+
+    useEffect(() => {
+        configRef.current = { nodeConfigs, freq, kFactor, clutterHeight };
+    }, [nodeConfigs, freq, kFactor, clutterHeight]);
+
+    const getIcon = (type, isEditing) => {
+        if (type === 'tx') {
+            return L.divIcon({
+                className: 'custom-icon-tx',
+                html: `<div style="background-color: #00ff41; width: ${isEditing ? 24 : 20}px; height: ${isEditing ? 24 : 20}px; border-radius: 50%; border: ${isEditing ? '4px' : '3px'} solid white; box-shadow: 0 0 ${isEditing ? '15px' : '10px'} rgba(0, 255, 65, ${isEditing ? 1 : 0.8}); transition: all 0.2s ease;"></div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
+        return L.divIcon({
+            className: 'custom-icon-rx',
+            html: `<div style="background-color: #ff0000; width: ${isEditing ? 24 : 20}px; height: ${isEditing ? 24 : 20}px; border-radius: 50%; border: ${isEditing ? '4px' : '3px'} solid white; box-shadow: 0 0 ${isEditing ? '15px' : '10px'} rgba(255, 0, 0, ${isEditing ? 1 : 0.8}); transition: all 0.2s ease;"></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+    };
+
+    const runAnalysis = useCallback((p1, p2) => {
+        if (!p1 || !p2) return;
         
         setLinkStats(prev => ({ ...prev, loading: true }));
-        const [p1, p2] = currentNodes;
         
-        try {
-            // Fetch Elevation Profile
-            const profile = await fetchElevationPath(p1, p2, 50); // 50 samples
-            
-            if (profile && profile.length > 0) {
-                // Analyze
-                const analysis = analyzeLinkProfile(
+        // Use LATEST config from ref, not closure
+        const currentConfig = configRef.current;
+        const h1 = currentConfig.nodeConfigs.A.antennaHeight;
+        const h2 = currentConfig.nodeConfigs.B.antennaHeight;
+        const currentFreq = currentConfig.freq;
+
+        fetchElevationPath(p1, p2)
+            .then(profile => {
+                const stats = analyzeLinkProfile(
                     profile, 
-                    Number(freq), 
-                    Number(antennaHeight), 
-                    Number(antennaHeight),
-                    Number(kFactor),
-                    Number(clutterHeight)
+                    currentFreq, 
+                    h1, h2, 
+                    currentConfig.kFactor, 
+                    currentConfig.clutterHeight
                 );
-
-                setLinkStats({
-                    loading: false,
-                    isObstructed: analysis.isObstructed,
-                    minClearance: analysis.minClearance,
-                    linkQuality: analysis.linkQuality,
-                    profileWithStats: analysis.profileWithStats
-                });
-            } else {
+                setLinkStats(prev => ({ ...prev, ...stats, loading: false }));
+            })
+            .catch(err => {
+                console.error("Link Analysis Failed", err);
                 setLinkStats(prev => ({ ...prev, loading: false }));
-            }
-        } catch (error) {
-            console.error("Analysis failed:", error);
-            setLinkStats(prev => ({ ...prev, loading: false }));
-        }
-    }, 50); // 50ms throttle
+            });
+    }, []); // Empty deps! Stable function.
 
-    // Initial analysis when nodes are first added (not by drag)
     useEffect(() => {
         if (nodes.length === 2) {
-             runAnalysis(nodes);
+             runAnalysis(nodes[0], nodes[1]);
         }
-    }, [nodes.length, recalcTimestamp]); // Dependencies that require re-calculation
+    }, [nodes, runAnalysis, recalcTimestamp]);
 
     useMapEvents({
         click(e) {
-            if (!active) return;
-            
-            // Ignore clicks on UI panels and controls
-            if (e.originalEvent && e.originalEvent.target) {
-                const target = e.originalEvent.target;
-                // Check if click is within a leaflet-control element or batch panel
-                if (target.closest('.leaflet-control') || target.closest('[data-batch-panel="true"]')) {
-                    return;
-                }
+            if (!active || locked) return;
+            if (nodes.length >= 2) return; 
+
+            const newNode = { 
+                lat: e.latlng.lat, 
+                lng: e.latlng.lng,
+                locked: false
+            };
+
+            const newNodes = [...nodes, newNode];
+            setNodes(newNodes);
+
+            if (newNodes.length === 1) {
+                setEditMode('A'); // Start editing TX
+            } else if (newNodes.length === 2) {
+                setEditMode('B'); // Then RX
             }
-            
-            const { lat, lng } = e.latlng;
-            setNodes(prev => {
-                if (prev.length >= 2) return [{ lat, lng, locked: false }]; // Reset if full
-                
-                const newNodes = [...prev, { lat, lng, locked: false }];
-                if (newNodes.length === 2) {
-                     // Trigger immediate analysis on click completion
-                     runAnalysis(newNodes);
-                }
-                return newNodes;
-            });
-            // Reset stats on new click sequence start
-            if (nodes.length >= 2) setLinkStats({ minClearance: 0, isObstructed: false, loading: false });
         }
     });
 
-    // Handle Drag (Visual Update Only)
-    const handleDrag = useCallback((idx, e) => {
-        const marker = e.target;
-        const position = marker.getLatLng();
-        
-        // Optimistic UI Update: Update state immediately for visual feedback
+    const handleDrag = (index, e) => {
+        const { lat, lng } = e.target.getLatLng();
         setNodes(prev => {
-            const newNodes = [...prev];
-            if (newNodes[idx].locked) return prev; // Guardrail for locked nodes
-
-            newNodes[idx] = { ...newNodes[idx], lat: position.lat, lng: position.lng };
-            return newNodes;
+            const copy = [...prev];
+            copy[index] = { ...copy[index], lat, lng };
+            return copy;
         });
-    }, [setNodes]);
+    };
 
-    // Handle Drag End (Trigger API Analysis)
-    const handleDragEnd = useCallback((idx, e) => {
-        const marker = e.target;
-        const position = marker.getLatLng();
-        
+    const handleDragEnd = (index, e) => {
+        const { lat, lng } = e.target.getLatLng();
         setNodes(prev => {
-            const newNodes = [...prev];
-             if (newNodes[idx].locked) return prev;
-
-            newNodes[idx] = { ...newNodes[idx], lat: position.lat, lng: position.lng };
-            
-            // Trigger analysis ONLY here
-            if (newNodes.length === 2) {
-                runAnalysis(newNodes);
+            const copy = [...prev];
+            copy[index] = { ...copy[index], lat, lng };
+            // Trigger recalculation
+            if (copy.length === 2) {
+                runAnalysis(copy[0], copy[1]);
             }
-            return newNodes;
+            return copy;
         });
-    }, [runAnalysis, setNodes]);
+    };
 
     if (nodes.length < 2) {
         return (
@@ -146,16 +141,23 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
                     <Marker 
                         key={idx} 
                         position={pos} 
-                        icon={idx === 0 ? txIcon : rxIcon}
-                        draggable={!pos.locked && active}
+                        icon={getIcon(idx === 0 ? 'tx' : 'rx', (idx === 0 && editMode === 'A') || (idx === 1 && editMode === 'B'))}
+                        draggable={!pos.locked && active && !locked}
                         eventHandlers={{
                             drag: (e) => handleDrag(idx, e),
-                            dragend: (e) => handleDragEnd(idx, e)
+                            dragend: (e) => handleDragEnd(idx, e),
+                            click: (e) => {
+                                L.DomEvent.stopPropagation(e); // Prevent map click from resetting
+                                setEditMode(idx === 0 ? 'A' : 'B');
+                            }
                         }}
                      >
                          <Popup>
                              <div><strong>{idx === 0 ? "TX (Point A)" : "RX (Point B)"}</strong></div>
-                             {pos.locked && <div><small>(Locked)</small></div>}
+                             {(pos.locked || locked) && <div><small>(Locked)</small></div>}
+                             <div style={{marginTop: '4px', fontSize: '0.9em', color: '#888'}}>
+                                 {((idx === 0 && editMode === 'A') || (idx === 1 && editMode === 'B')) ? "(Editing)" : "Click to Edit"}
+                             </div>
                          </Popup>
                     </Marker>
                 ))}
@@ -172,13 +174,16 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
 
     const fresnelRadius = calculateFresnelRadius(distance, freq);
     
-    // Calculate Budget
+    // Calculate Budget using explicit Node A (TX) -> Node B (RX) logic
+    const configA = nodeConfigs.A;
+    const configB = nodeConfigs.B;
+    
     const budget = calculateLinkBudget({
-        txPower, 
-        txGain: antennaGain, 
-        txLoss: cableLoss,
-        rxGain: antennaGain, 
-        rxLoss: cableLoss,
+        txPower: configA.txPower, 
+        txGain: configA.antennaGain, 
+        txLoss: DEVICE_PRESETS[configA.device]?.loss || 0,
+        rxGain: configB.antennaGain, 
+        rxLoss: DEVICE_PRESETS[configB.device]?.loss || 0,
         distanceKm: distance, 
         freqMHz: freq,
         sf, bw
@@ -196,39 +201,52 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
 
     const fresnelPolygon = calculateFresnelPolygon(p1, p2, freq);
 
-
-
     return (
         <>
             {/* Markers and Lines code... */}
             <Marker 
                 position={p1} 
-                icon={txIcon}
-                draggable={!p1.locked && active}
+                icon={getIcon('tx', editMode === 'A')}
+                draggable={!p1.locked && active && !locked}
                 eventHandlers={{
                     drag: (e) => handleDrag(0, e),
-                    dragend: (e) => handleDragEnd(0, e)
+                    dragend: (e) => handleDragEnd(0, e),
+                    click: (e) => {
+                        L.DomEvent.stopPropagation(e);
+                        setEditMode('A');
+                    }
                 }}
             >
                 <Popup>
                     <div><strong>TX (Point A)</strong></div>
-                    {p1.locked && <div><small>(Locked)</small></div>}
+                    {(p1.locked || locked) && <div><small>(Locked)</small></div>}
+                    <div style={{marginTop: '4px', fontSize: '0.9em', color: '#888'}}>
+                        {editMode === 'A' ? "(Editing)" : "Click to Edit"}
+                    </div>
                 </Popup>
             </Marker>
             <Marker 
                 position={p2} 
-                icon={rxIcon}
-                draggable={!p2.locked && active}
+                icon={getIcon('rx', editMode === 'B')}
+                draggable={!p2.locked && active && !locked}
                 eventHandlers={{
                     drag: (e) => handleDrag(1, e),
-                    dragend: (e) => handleDragEnd(1, e)
+                    dragend: (e) => handleDragEnd(1, e),
+                    click: (e) => {
+                         L.DomEvent.stopPropagation(e);
+                         setEditMode('B');
+                    }
                 }}
             >
                 <Popup>
                     <div><strong>RX (Point B)</strong></div>
-                    {p2.locked && <div><small>(Locked)</small></div>}
+                    {(p2.locked || locked) && <div><small>(Locked)</small></div>}
+                    <div style={{marginTop: '4px', fontSize: '0.9em', color: '#888'}}>
+                        {editMode === 'B' ? "(Editing)" : "Click to Edit"}
+                    </div>
                 </Popup>
             </Marker>
+
             
             {/* Direct Line of Sight */}
             <Polyline 
