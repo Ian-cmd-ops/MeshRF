@@ -11,7 +11,6 @@ const LinkProfileChart = ({ profileWithStats, width = 200, height = 100, units =
     const heightUnit = isImperial ? 'ft' : 'm';
 
     // Determine LOS Line Color based on Margin (if not provided)
-    // Fallback logic if losColor is missing
     let finalLosColor = losColor;
     if (!finalLosColor) {
         finalLosColor = '#00ff41'; // Green (Excellent)

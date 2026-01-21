@@ -48,7 +48,8 @@ services:
     image: ghcr.io/d3mocide/meshrf-opentopodata:latest
     container_name: opentopodata
     volumes:
-      - ./data/opentopodata:/app/data
+      - ./data/opentopodata:/app/data:ro
+      - ./data/opentopodata/config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     networks:
       - meshrf_net

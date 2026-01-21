@@ -1,5 +1,22 @@
 # Release Notes
 
+## v1.6.3 - Docker & Config Enhancements
+
+This update improves the development and deployment experience with optimized Docker builds and robust configuration handling for self-hosted elevation data.
+
+### 🐳 Docker & DevOps
+
+- **Build Speed Boost**: added `.dockerignore` to exclude `node_modules` and other heavy artifacts, reducing build context from >1.5GB to ~35MB.
+- **Production Safety**: Updated `docker-compose.yml` to mount data volumes as **Read-Only** (`:ro`), preventing accidental data corruption.
+- **Config Handling**: Explicitly mounted `config.yaml` for the `opentopodata` service in both dev and prod environments to ensure reliable dataset loading.
+
+### 🔧 Configuration
+
+- **Smart Git Ignore**: Updated `.gitignore` to track the `opentopodata` directory structure and config while correctly ignoring large elevation dataset files (`.hgt`, `.tif`).
+- **Redis Fix**: Fixed a corrupted image reference in the dev docker-compose file.
+
+---
+
 ## v1.6.2 - Visual Sync & Interaction Polish
 
 This patch release focuses on "Quality of Life" improvements for the map interface, ensuring that visual feedback perfectly matches the underlying math and that map interactions feel buttery smooth.

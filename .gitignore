@@ -33,6 +33,11 @@ eslint.config.js
 # Build Artifacts
 redis_data
 rf-engine/__pycache__/
+data/*
+!data/opentopodata/
+data/opentopodata/ned10m/*
+!data/opentopodata/ned10m/.gitkeep
+!data/opentopodata/config.yaml
 docker-compose-astro.yml
 AI_DEV_STARTUP_PROMPT.md
 AI_Research

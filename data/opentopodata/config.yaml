@@ -1,0 +1,10 @@
+datasets:
+  - name: ned10m
+    path: /app/data/ned10m/
+    filename_epsg: 4269
+    filename_tile_size: 1
+    wgs84_bounds:
+      left: -125
+      right: -115
+      bottom: 41
+      top: 50

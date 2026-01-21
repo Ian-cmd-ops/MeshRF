@@ -60,7 +60,7 @@ const OptimizationResultsPanel = ({ results, onClose, onCenter, onReset, onRecal
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1em', fontWeight: 600, color: '#00f2ff' }}>
-                    Top {results.length} Ideal Spots
+                    Top {results.length} Highest Points
                 </h3>
                 <button 
                     onClick={(e) => {

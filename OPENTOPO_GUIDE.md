@@ -37,7 +37,32 @@ meshRF is configured to use the **NED 10m** dataset (high resolution for US) by 
     │       └── n45w123.hgt  <-- Place file here
     ```
 
-## 3. Configuration
+**If you would like to download larger datasets to support an entire region I have created a tool for batch processing downloads from USGS**:
+
+[meshRF Datasets Tool](https://github.com/d3mocide/meshRF-datasets-tool)
+
+## 3. Configuration (config.yaml)
+
+The service requires a `config.yaml` file to define the datasets. Only the `config.yaml` is tracked by git; the data files are ignored.
+
+Create or edit `data/opentopodata/config.yaml`:
+
+Example:
+
+```yaml
+datasets:
+  - name: ned10m
+    path: /app/data/ned10m/
+    filename_epsg: 4269
+    filename_tile_size: 1
+    wgs84_bounds:
+      left: -125
+      right: -115
+      bottom: 41
+      top: 50
+```
+
+## 4. Environment Variables
 
 If you downloaded a different dataset type (e.g., SRTM 30m instead of NED 10m), update the `ELEVATION_DATASET` environment variable in `docker-compose.yml`:
 

@@ -1,0 +1,15 @@
+.git
+node_modules
+dist
+data
+redis_data
+cache
+opentopodata/data
+rf-engine/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.DS_Store
+.env
+.venv
+site
