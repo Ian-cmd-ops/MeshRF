@@ -9,11 +9,17 @@ This update improves the development and deployment experience with optimized Do
 - **Build Speed Boost**: added `.dockerignore` to exclude `node_modules` and other heavy artifacts, reducing build context from >1.5GB to ~35MB.
 - **Production Safety**: Updated `docker-compose.yml` to mount data volumes as **Read-Only** (`:ro`), preventing accidental data corruption.
 - **Config Handling**: Explicitly mounted `config.yaml` for the `opentopodata` service in both dev and prod environments to ensure reliable dataset loading.
+- **CI Optimization**: Updated GitHub Actions to only rebuild Docker images for components that have changed (`core`, `rf-engine`, or `opentopodata`), significantly reducing CI wait times.
 
 ### 🔧 Configuration
 
 - **Smart Git Ignore**: Updated `.gitignore` to track the `opentopodata` directory structure and config while correctly ignoring large elevation dataset files (`.hgt`, `.tif`).
 - **Redis Fix**: Fixed a corrupted image reference in the dev docker-compose file.
+
+### Dataset Downloader Guide
+
+- **Dataset Downloader Guide**: Added a guide to help users download and install OpenTopoData sets for use with meshRF.
+  [meshRF Datasets Tool](https://github.com/d3mocide/meshRF-datasets-tool)
 
 ---
 
