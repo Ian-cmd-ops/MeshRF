@@ -6,7 +6,7 @@ import { calculateBullingtonDiffraction } from '../../utils/rfMath';
 import { useRF } from '../../context/RFContext';
 
 const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagationSettings, setPropagationSettings }) => { 
-    if (nodes.length !== 2) return null;
+
 
     const { nodeConfigs, freq } = useRF();
     const h1 = parseFloat(nodeConfigs.A.antennaHeight);
@@ -102,6 +102,8 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagat
     const [isMinimized, setIsMinimized] = React.useState(false);
     const [showModelHelp, setShowModelHelp] = React.useState(false);
     const lastPosRef = React.useRef({ x: 0, y: 0 });
+
+    if (nodes.length !== 2) return null;
 
     // Calculate Dimensions directly (Derived State)
     let layoutOffset = 315; // Adjusted to prevent Legend overlap

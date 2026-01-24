@@ -5,12 +5,12 @@ services:
     ports:
       - "80:80"
     environment:
-    # Hostname for reverse proxy
+      # Hostname for reverse proxy
       - ALLOWED_HOSTS=localhost
-    # Default Map Center (Portland, OR)
+      # Default Map Center (Portland, OR)
       - VITE_MAP_LAT=45.5152
       - VITE_MAP_LNG=-122.6784
-    # UI Defaults (Runtime Configurable)
+      # UI Defaults (Runtime Configurable)
       - DEFAULT_MAP_STYLE=dark_green
       - DEFAULT_UNITS=imperial
     restart: always
@@ -24,7 +24,7 @@ services:
       # Elevation Data Configuration
       # Using local OpenTopoData service
       - ELEVATION_API_URL=http://opentopodata:5000
-      
+
       # Dataset to use: ned10m (High res US) or srtm30m (Global)
       # User must download .hgt/.tif files to ./data/opentopodata
       - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
@@ -49,9 +49,9 @@ services:
     image: ghcr.io/d3mocide/meshrf-opentopodata:latest
     container_name: opentopodata
     volumes:
-    # Location of your .hgt/.tif files
+      # Location of your .hgt/.tif files
       - ./data/opentopodata:/app/data:ro
-    # Location of your config.yaml file
+      # Location of your config.yaml file
       - ./data/opentopodata/config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     networks:

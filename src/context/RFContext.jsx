@@ -122,6 +122,7 @@ export const RFProvider = ({ children }) => {
                updateConfig('txPower', preset.power);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRadioPreset]);
 
     // 2. Device Cap Sync
@@ -136,6 +137,7 @@ export const RFProvider = ({ children }) => {
             });
             return next;
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodeConfigs.A.device, nodeConfigs.B.device]); // Dependency on devices
 
 
@@ -159,6 +161,7 @@ export const RFProvider = ({ children }) => {
              
              return changed ? next : prev;
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodeConfigs.A.antenna, nodeConfigs.B.antenna]);
 
     // Derived Values (Active Context)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
 
 const BatchNodesPanel = ({ nodes, selectedNodes = [], onCenter, onClear, onNodeSelect, forceMinimized = false }) => {
     const [isMinimized, setIsMinimized] = useState(false);
@@ -7,6 +8,7 @@ const BatchNodesPanel = ({ nodes, selectedNodes = [], onCenter, onClear, onNodeS
     // Auto-minimize based on prop (e.g. when result panel opens on mobile)
     useEffect(() => {
         if (forceMinimized) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsMinimized(true);
         }
     }, [forceMinimized]);
@@ -72,8 +74,7 @@ const BatchNodesPanel = ({ nodes, selectedNodes = [], onCenter, onClear, onNodeS
                     alignItems: 'center',
                     gap: '8px',
                     fontSize: '14px',
-                    fontWeight: 'bold',
-                    border: '1px solid #444'
+                    fontWeight: 'bold'
                 }}
             onClick={(e) => {
                 e.stopPropagation();

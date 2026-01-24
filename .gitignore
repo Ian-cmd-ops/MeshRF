@@ -23,7 +23,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-eslint.config.js
 
 # Environment variables
 .env
@@ -39,5 +38,5 @@ data/opentopodata/ned10m/*
 !data/opentopodata/ned10m/.gitkeep
 !data/opentopodata/config.yaml
 docker-compose-astro.yml
-AI_Skills
 AI_Research
+.agent

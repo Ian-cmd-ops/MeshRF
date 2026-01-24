@@ -43,10 +43,34 @@ jobs:
           }
 
           # Check if we should build everything (tags, PRs, or workflow change)
+          # Check if we should build everything
           FORCE_BUILD=false
-          if [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BASE_REF="HEAD~1"
+
+          # Intelligent Tag Handling
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Try to find the previous tag (abbrev=0 to get clean tag name)
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            
+            if [ -z "$PREV_TAG" ]; then
+              # No previous tag found (first release), force full build
+              echo "No previous tag found. Forcing full build."
+              FORCE_BUILD=true
+            else
+              # Diff against the previous tag
+              BASE_REF="$PREV_TAG"
+              echo "Comparing this tag (${{ github.ref_name }}) against previous tag: $PREV_TAG"
+            fi
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, we currently force build to ensure stability, 
+            # though this could be optimized to compare against target branch in future.
             FORCE_BUILD=true
-          elif git diff --name-only HEAD~1 | grep -q "\.github/workflows/docker-publish\.yml"; then
+          fi
+
+          # Check for workflow changes (always rebuild if pipeline changes)
+          # We use BASE_REF here to catch workflow changes in the range
+          if git diff --name-only "$BASE_REF" HEAD | grep -q "\.github/workflows/docker-publish\.yml"; then
+            echo "Workflow file changed. Forcing full build."
             FORCE_BUILD=true
           fi
 
@@ -55,18 +79,20 @@ jobs:
             add_to_matrix "./rf-engine" "-rf-engine" "./rf-engine/Dockerfile" "rf-engine"
             add_to_matrix "opentopodata" "-opentopodata" "opentopodata/docker/Dockerfile" "opentopodata"
           else
+            echo "Checking for changes relative to: $BASE_REF"
+            
             # Core/root image changes
-            if git diff --name-only HEAD~1 | grep -E '(Dockerfile|\.go$|\.py$|requirements|package\.json|\.ts$|\.js$)' | grep -qv "rf-engine\|opentopodata"; then
+            if git diff --name-only "$BASE_REF" HEAD | grep -E '(Dockerfile|\.go$|\.py$|requirements|package\.json|\.ts$|\.js$)' | grep -qv "rf-engine\|opentopodata"; then
               add_to_matrix "." "" "Dockerfile" "core"
             fi
 
             # rf-engine changes
-            if git diff --name-only HEAD~1 | grep -q "^rf-engine/"; then
+            if git diff --name-only "$BASE_REF" HEAD | grep -q "^rf-engine/"; then
               add_to_matrix "./rf-engine" "-rf-engine" "./rf-engine/Dockerfile" "rf-engine"
             fi
 
             # opentopodata changes
-            if git diff --name-only HEAD~1 | grep -q "^opentopodata/"; then
+            if git diff --name-only "$BASE_REF" HEAD | grep -q "^opentopodata/"; then
               add_to_matrix "opentopodata" "-opentopodata" "opentopodata/docker/Dockerfile" "opentopodata"
             fi
           fi

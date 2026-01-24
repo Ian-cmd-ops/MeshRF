@@ -11,7 +11,7 @@ export const useRFCoverageTool = (active) => {
     const [resultLayer, setResultLayer] = useState(null);
     const [isCalculating, setIsCalculating] = useState(false);
     const resultLayerRef = useRef(null); // Store actual data in ref
-    const [renderVersion, setRenderVersion] = useState(0); // Trigger re-renders
+    const [_renderVersion, setRenderVersion] = useState(0); // Trigger re-renders
     const wasmModuleRef = useRef(null);
 
     // Initialize Wasm Module

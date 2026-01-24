@@ -1,0 +1,36 @@
+name: Delete Old Container Images
+
+on:
+  workflow_dispatch: # Allow manual run
+  schedule:
+    - cron: "0 0 * * 0" # Run weekly on Sunday at midnight
+
+jobs:
+  clean-ghcr:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete untagged images (Core App)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "meshrf"
+          package-type: "container"
+          min-versions-to-keep: 5
+          delete-only-untagged-versions: "true"
+
+      - name: Delete untagged images (RF Engine)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "meshrf-rf-engine"
+          package-type: "container"
+          min-versions-to-keep: 5
+          delete-only-untagged-versions: "true"
+
+      - name: Delete untagged images (OpenTopoData)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "meshrf-opentopodata"
+          package-type: "container"
+          min-versions-to-keep: 2 # Keep fewer since it changes rarely
+          delete-only-untagged-versions: "true"
