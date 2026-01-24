@@ -89,7 +89,7 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
                 console.error("Link Analysis Failed", err);
                 setLinkStats(prev => ({ ...prev, loading: false, isObstructed: false, minClearance: 0 }));
             });
-    }, []); // Empty deps! Stable function.
+    }, [setLinkStats]); // Empty deps! Stable function.
 
     useEffect(() => {
         if (nodes.length === 2) {

@@ -12,25 +12,38 @@
     <script src="/env-config.js"></script>
   </head>
   <style>
-    body {
+    html, body {
       margin: 0;
       padding: 0;
       background-color: #0a0a0f; /* Immediate dark theme */
       color: #ffffff;
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
+      height: 100%;
     }
     .loader-container {
       display: flex;
+      flex-direction: column; /* Stack vertically */
       justify-content: center;
       align-items: center;
       height: 100vh;
       width: 100vw;
+      gap: 24px; /* Space between text and spinner */
+    }
+    h1 {
+      margin: 0;
+      font-size: 32px; /* Slightly larger for impact without logo */
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 1px;
     }
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid rgba(0, 242, 255, 0.1);
+      border: 3px solid rgba(0, 242, 255, 0.1);
       border-left-color: #00f2ff;
       border-radius: 50%;
       animation: spin 1s linear infinite;
@@ -42,6 +55,7 @@
   <body>
     <div id="root">
       <div class="loader-container">
+        <h1>meshRF</h1>
         <div class="spinner"></div>
       </div>
     </div>

@@ -28,7 +28,7 @@ export function useViewshedTool(active) {
     const [resultLayer, setResultLayer] = useState(null); // { data, width, height, bounds }
     const [isCalculating, setIsCalculating] = useState(false);
     const [error, setError] = useState(null);
-    const [ready, setReady] = useState(globalWorkerReady);
+    const [_ready, setReady] = useState(globalWorkerReady);
 
     
     // Track analysis state
@@ -111,7 +111,7 @@ export function useViewshedTool(active) {
     };
 
     // Helper: Tile bounds
-    const getTileBounds = (x, y, z) => {
+    const _getTileBounds = (x, y, z) => {
         const tile2long = (x, z) => (x / Math.pow(2, z)) * 360 - 180;
         const tile2lat = (y, z) => {
             const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
@@ -243,6 +243,7 @@ export function useViewshedTool(active) {
             const bounds = calculateStitchedBounds(centerTile);
             
             // Store context for callback
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             currentBoundsRef.current = {
                 width: stitched.width,
                 height: stitched.height,

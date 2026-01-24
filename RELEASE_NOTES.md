@@ -1,5 +1,30 @@
 # Release Notes
 
+## v1.7.7 - Security Hardening & DevOps
+
+This release focuses on hardening the production environment against malicious scanners, polishing the startup experience, and significantly optimizing the CI/CD pipeline.
+
+### 🛡️ Security Hardening
+
+- **Nginx Hardening**: Implemented strict blocking rules in `nginx.conf` to drop connections (Status 444) for malicious scan patterns:
+  - Blocked PHP files (`.php`) and hidden files (`.env`, `.git`).
+  - Blocked common exploit paths (`/wp-admin`, `/cgi-bin`).
+  - **Server Hiding**: Disabled `server_tokens` to hide Nginx version.
+  - **Log Suppression**: Disabled access logging for blocked requests to keep logs clean and relevant.
+
+### 🚀 CI/CD & DevOps
+
+- **Smart Builds**: Optimized GitHub Actions (`docker-publish.yml`) to intelligentlly skip building unchanged containers (e.g., `opentopodata`, `rf-engine`) during releases, saving build minutes and storage.
+- **Automated Cleanup**: Added a new workflow (`cleanup-packages.yml`) to automatically prune untagged/stale images from the GitHub Container Registry every week.
+
+### 🎨 UI & Developer Experience
+
+- **Polished Startup**: Fixed the "White Flash" on startup by synchronizing the `index.html` background color with the app theme.
+- **Branding**: Added "MeshRF" text branding to the loading screen with a premium gradient finish.
+- **Dev Fixes**: Resolved a `vite-plugin-pwa` dependency error in the Docker development environment.
+
+---
+
 ## v1.7.6 - Mobile PWA & iOS Polish
 
 This release transforms meshRF into a fully installable **Progressive Web App (PWA)** and resolves layout issues on iOS devices, making it a true mobile-first field tool.

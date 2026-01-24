@@ -21,6 +21,7 @@ const useThrottledCalculation = (callback, delay = 50) => {
     const func = (...args) => {
         return callbackRef.current(...args);
     };
+    // eslint-disable-next-line react-hooks/refs
     return throttle(func, delay, { leading: true, trailing: true });
   }, [delay]);
 
