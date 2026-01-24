@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.7.4 - Bug Fix: Tooltip Restoration
+
+This patch restores the Context-Aware Guidance tooltips ("Green/Purple" banners) which were inadvertently hidden during the refactoring process. The UI is now fully functional with all help systems active.
+
+### 🐛 Bug Fixes
+
+- **Missing Overlays**: Fixed an issue where `GuidanceOverlays` and `MapToolbar` were not rendering in the map view.
+- **Legacy Code Cleanup**: Removed residual inline code from `MapContainer.jsx` to prevent future conflicts.
+
+---
+
 ## v1.7.3 - Codebase Health & UI Standardization
 
 This "Sprint 1" release focuses on establishing a rock-solid foundation for future growth. It includes a major architectural refactor of the core map component, the introduction of Geolocation features, and a comprehensive audit of all guidance and visualization overlays to ensure they are consistent, accurate, and user-friendly.
