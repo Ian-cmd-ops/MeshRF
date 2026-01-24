@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.7.9 - PWA & Safari Polish
+
+This hotfix perfects the mobile experience by resolving rendering issues on iOS Safari and ensuring proper spacing on PWA installs.
+
+### 🍎 iOS & PWA
+
+- **Safari Compatibility**: Fixed missing glassmorphism effects on tooltips by adding `-webkit-backdrop-filter` support.
+- **Safe Area Support**: Tooltips now respect the `safe-area-inset-bottom` environment variable, preventing them from overlapping the Home Swipe Indicator on iPhone X and newer.
+
+---
+
 ## v1.7.8 - Mobile UI Refinements
 
 This patch release addresses critical UI layout issues on mobile devices, ensuring controls are accessible and overlays behave correctly.
