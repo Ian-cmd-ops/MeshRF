@@ -90,7 +90,7 @@ const MapToolbar = ({ toolMode, setToolMode, resetToolState }) => {
                   flexShrink: 0
               }}
             >
-              {toolMode === 'optimize' ? 'Cancel Scan' : 'Elevation Scan'}
+              {toolMode === 'optimize' ? 'Cancel Finder' : 'Site Finder'}
             </button>
     
             <button 

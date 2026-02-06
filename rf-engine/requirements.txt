@@ -7,3 +7,4 @@ mercantile
 Pillow
 redis
 scipy
+itmlogic

@@ -39,4 +39,4 @@ data/opentopodata/ned10m/*
 !data/opentopodata/config.yaml
 docker-compose-astro.yml
 AI_Research
-.agent
+

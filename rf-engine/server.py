@@ -18,23 +18,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class AnalysisRequest(BaseModel):
-    lat: float
-    lon: float
-    frequency_mhz: float
-    height_meters: float
-
 # --- Dependencies ---
 import redis
 from tile_manager import TileManager
 import rf_physics
-from rf_physics import analyze_link
+from optimization_service import OptimizationService
 
 # --- Initialization ---
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 tile_manager = TileManager(redis_client)
+optimization_service = OptimizationService(tile_manager)
 
 class LinkRequest(BaseModel):
     tx_lat: float
@@ -44,7 +39,8 @@ class LinkRequest(BaseModel):
     frequency_mhz: float
     tx_height: float
     rx_height: float
-
+    model: str = "itm" # itm, fspl
+    environment: str = "suburban"
 
 @app.post("/calculate-link")
 def calculate_link_endpoint(req: LinkRequest):
@@ -62,7 +58,19 @@ def calculate_link_endpoint(req: LinkRequest):
     elevs = tile_manager.get_elevation_profile(
         req.tx_lat, req.tx_lon,
         req.rx_lat, req.rx_lon,
-        samples=50
+        samples=100 # Increased samples for ITM accuracy
+    )
+    
+    # Calculate Path Loss (ITM or FSPL)
+    # Calculate Path Loss (Generic Dispatcher)
+    path_loss_db = rf_physics.calculate_path_loss(
+        dist_m, 
+        elevs, 
+        req.frequency_mhz, 
+        req.tx_height, 
+        req.rx_height,
+        model=req.model,
+        environment=req.environment
     )
     
     # Analyze link with correct signature
@@ -73,6 +81,9 @@ def calculate_link_endpoint(req: LinkRequest):
         req.tx_height,
         req.rx_height
     )
+    
+    result['path_loss_db'] = float(path_loss_db)
+    result['model_used'] = req.model
     
     return result
 
@@ -170,15 +181,16 @@ class OptimizeRequest(BaseModel):
     max_lon: float
     frequency_mhz: float
     height_meters: float
+    weights: dict = {"elevation": 0.5, "prominence": 0.3, "fresnel": 0.2}
+    existing_nodes: list = [] # List of {lat, lon, height}
 
 @app.post("/optimize-location")
 def optimize_location_endpoint(req: OptimizeRequest):
     """
-    Find the best location (highest elevation) within the bounding box.
-    Heuristic: Higher is generally better for RF coverage.
+    Find best location using multi-criteria analysis (elevation, prominence, fresnel).
     """
     try:
-        # Grid search (10x10)
+        # Grid search (10x10) - maybe increase to 15x15 for better prominence detection?
         steps = 10
         lat_step = (req.max_lat - req.min_lat) / steps
         lon_step = (req.max_lon - req.min_lon) / steps
@@ -195,22 +207,50 @@ def optimize_location_endpoint(req: OptimizeRequest):
         
         candidates = []
         for i, (lat, lon) in enumerate(coords):
-            candidates.append({
+            # Basic Candidate
+            cand = {
                 "lat": lat, 
                 "lon": lon, 
-                "elevation": elevs[i],
-                "score": elevs[i] 
-            })
+                "elevation": elevs[i]
+            }
+            # Score Components
+            metrics = optimization_service.score_candidate(cand, req.weights, req.existing_nodes)
+            cand.update(metrics) # Adds prominence, fresnel
+            candidates.append(cand)
 
-        # Sort by elevation desc
-        candidates.sort(key=lambda x: x["elevation"], reverse=True)
+        # Normalize and Calculate Final Score
+        if not candidates:
+             return {"status": "success", "locations": []}
+             
+        max_elev = max([c['elevation'] for c in candidates]) or 1.0
+        max_prom = max([c['prominence'] for c in candidates]) or 1.0
+        # Fresnel is already 0-1
+        
+        w_elev = req.weights.get("elevation", 0.3)
+        w_prom = req.weights.get("prominence", 0.4)
+        w_fres = req.weights.get("fresnel", 0.3)
+        
+        for c in candidates:
+            norm_elev = c['elevation'] / max_elev if max_elev > 0 else 0
+            norm_prom = c['prominence'] / max_prom if max_prom > 0 else 0
+            
+            c['score'] = (norm_elev * w_elev) + (norm_prom * w_prom) + (c['fresnel'] * w_fres)
+            # Scale to 0-100 for display
+            c['score'] = round(c['score'] * 100, 1)
+
+        # Sort by Score desc
+        candidates.sort(key=lambda x: x["score"], reverse=True)
         
         # Take top 5
         top_results = candidates[:5]
 
         return {
             "status": "success",
-            "locations": top_results
+            "locations": top_results,
+            "metadata": {
+                "max_elevation": max_elev,
+                "max_prominence": max_prom
+            }
         }
     except Exception as e:
         print(f"Optimize Error: {e}")

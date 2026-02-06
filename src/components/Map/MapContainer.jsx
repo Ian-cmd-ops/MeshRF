@@ -14,7 +14,7 @@ import LinkLayer from "./LinkLayer";
 import LinkAnalysisPanel from "./LinkAnalysisPanel";
 import OptimizationLayer from "./OptimizationLayer";
 import { useRF } from "../../context/RFContext";
-import { calculateLinkBudget, calculateOkumuraHata } from "../../utils/rfMath";
+import { calculateLinkBudget, analyzeLinkProfile } from "../../utils/rfMath";
 import { DEVICE_PRESETS } from "../../data/presets";
 import * as turf from "@turf/turf";
 import DeckGLOverlay from "./DeckGLOverlay";
@@ -31,6 +31,7 @@ import CoverageClickHandler from "./Controls/CoverageClickHandler";
 import BatchNodesPanelWrapper from "./Controls/BatchNodesPanelWrapper";
 import MapToolbar from "./UI/MapToolbar";
 import GuidanceOverlays from "./UI/GuidanceOverlays";
+import SiteSelectionSettings from "./UI/SiteSelectionSettings";
 
 // Fix for default marker icon issues in React Leaflet
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -77,10 +78,15 @@ const MapComponent = () => {
     loading: false,
   });
   const [selectedBatchNodes, setSelectedBatchNodes] = useState([null, null]); // Track selected batch nodes: [TX_node, RX_node]
+  const [siteSelectionWeights, setSiteSelectionWeights] = useState({
+    elevation: 0.5,
+    prominence: 0.3,
+    fresnel: 0.2
+  });
 
   // Propagation Model State
   const [propagationSettings, setPropagationSettings] = useState({
-    model: "Hata", // Default to Realistic
+    model: "itm", // Default to Longley-Rice (Terrain Aware)
     environment: "urban_small", // Default to Urban
   });
   const selectionRef = React.useRef(0); // Track last selection time to prevent identical double-clicks
@@ -210,45 +216,94 @@ const MapComponent = () => {
     }
   }, [recalcTimestamp]);
 
+  // Async Link Calculation (Backend)
+  useEffect(() => {
+    if (nodes.length !== 2) return;
+
+    const fetchLinkData = async () => {
+        setLinkStats(prev => ({ ...prev, loading: true }));
+        try {
+            const configA = nodeConfigs.A;
+            const configB = nodeConfigs.B;
+            
+            // Import dynamically to avoid circular dep if needed? No, standard import is fine.
+            const { calculateLink } = await import("../../utils/rfService");
+            
+            const result = await calculateLink(
+                nodes[0], 
+                nodes[1], 
+                freq, 
+                configA.antennaHeight, 
+                configB.antennaHeight,
+                propagationSettings.model,
+                propagationSettings.environment
+            );
+            
+            // Calculate Budget using the path loss from backend
+            const budgetResult = calculateLinkBudget({
+                txPower: configA.txPower,
+                txGain: configA.antennaGain,
+                txLoss: DEVICE_PRESETS[configA.device]?.loss || 0,
+                rxGain: configB.antennaGain,
+                rxLoss: DEVICE_PRESETS[configB.device]?.loss || 0,
+                distanceKm: result.dist_km,
+                freqMHz: freq,
+                sf,
+                bw,
+                pathLossOverride: result.path_loss_db 
+            });
+
+            // Hydrate profile with geometry stats (Fresnel, LOS, Earth Bulge) for the Chart
+            // The backend gives us raw elevation, but the Chart needs the calculated geometry lines.
+            const rawProfile = result.profile.map((elev, i) => ({
+                elevation: elev,
+                distance: (result.dist_km / (result.profile.length - 1)) * i 
+            }));
+            
+            // Re-run geometry calc locally for visualization
+            const { profileWithStats } = analyzeLinkProfile(
+                rawProfile,
+                freq,
+                configA.antennaHeight,
+                configB.antennaHeight
+            );
+
+            setLinkStats({
+                minClearance: result.min_clearance_ratio,
+                isObstructed: result.status !== "viable",
+                linkQuality: result.status === "viable" ? "Excellent" : "Obstructed",
+                profileWithStats: profileWithStats, 
+                loading: false,
+                pathLoss: result.path_loss_db,
+                rssi: budgetResult.rssi,
+                margin: budgetResult.margin
+            });
+
+        } catch (e) {
+            console.error("Link Calc Failed", e);
+            setLinkStats(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    // Debounce slightly to avoid rapid fires
+    const timer = setTimeout(fetchLinkData, 200);
+    return () => clearTimeout(timer);
+
+  }, [nodes, freq, nodeConfigs, propagationSettings]); // Re-run when inputs change
+
   let budget = null;
   let distance = 0;
 
-  if (nodes.length === 2) {
-    const [p1, p2] = nodes;
-    distance = turf.distance([p1.lng, p1.lat], [p2.lng, p2.lat], {
-      units: "kilometers",
-    });
-
-    // Determine Path Loss logic
-    let pathLossVal = null; // Default to FSPL (calculated inside if null)
-
-    const configA = nodeConfigs.A;
-    const configB = nodeConfigs.B;
-
-    if (propagationSettings.model === "Hata") {
-      // Use actual configured heights
-      // Okumura-Hata expects heights in meters (which we store)
-      pathLossVal = calculateOkumuraHata(
-        distance,
-        freq,
-        configA.antennaHeight,
-        configB.antennaHeight,
-        propagationSettings.environment,
-      );
-    }
-
-    budget = calculateLinkBudget({
-      txPower: configA.txPower,
-      txGain: configA.antennaGain,
-      txLoss: DEVICE_PRESETS[configA.device]?.loss || 0,
-      rxGain: configB.antennaGain,
-      rxLoss: DEVICE_PRESETS[configB.device]?.loss || 0,
-      distanceKm: distance,
-      freqMHz: freq,
-      sf,
-      bw,
-      pathLossOverride: pathLossVal,
-    });
+  if (linkStats.rssi !== undefined && nodes.length === 2) {
+      // Create a virtual budget object for the panel
+      budget = {
+          rssi: linkStats.rssi,
+          margin: linkStats.margin,
+          // other props...
+      }
+      
+      const [p1, p2] = nodes;
+      distance = turf.distance([p1.lng, p1.lat], [p2.lng, p2.lat], { units: "kilometers" });
   }
 
   // Helper to reset all tool states (Clear View)
@@ -611,6 +666,13 @@ const MapComponent = () => {
             [setToolMode],
           )}
           onStateUpdate={handleOptimizationStateUpdate}
+          weights={siteSelectionWeights}
+        />
+        
+        <SiteSelectionSettings 
+            weights={siteSelectionWeights} 
+            setWeights={setSiteSelectionWeights} 
+            active={toolMode === 'optimize'} 
         />
 
         {/* Batch Nodes Rendering */}
