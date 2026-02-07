@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const SiteAnalysisResultsPanel = ({ results, onClose, onCenter, onClear, onRunNew }) => {
+const SiteAnalysisResultsPanel = ({ results, onClose, onCenter, onClear, onRunNew, units }) => {
     const [isMinimized, setIsMinimized] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -96,11 +96,19 @@ const SiteAnalysisResultsPanel = ({ results, onClose, onCenter, onClear, onRunNe
                                 <div style={{ display: 'flex', gap: '20px' }}>
                                     <div>
                                         <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase' }}>Elevation</div>
-                                        <div style={{ color: '#00f2ff', fontWeight: 'bold', fontSize: '1.1em' }}>{res.elevation} m</div>
+                                        <div style={{ color: '#00f2ff', fontWeight: 'bold', fontSize: '1.1em' }}>
+                                            {units === 'imperial' 
+                                                ? `${(res.elevation * 3.28084).toFixed(1)} ft` 
+                                                : `${res.elevation} m`}
+                                        </div>
                                     </div>
                                     <div>
                                         <div style={{ fontSize: '0.7em', color: '#888', textTransform: 'uppercase' }}>Coverage Area</div>
-                                        <div style={{ color: '#00f2ff', fontWeight: 'bold', fontSize: '1.1em' }}>{res.coverage_area_km2} km²</div>
+                                        <div style={{ color: '#00f2ff', fontWeight: 'bold', fontSize: '1.1em' }}>
+                                            {units === 'imperial' 
+                                                ? `${(res.coverage_area_km2 * 0.386102).toFixed(2)} mi²` 
+                                                : `${res.coverage_area_km2} km²`}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

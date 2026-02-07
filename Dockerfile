@@ -1,13 +1,11 @@
-# Stage 1: Builder
-FROM node:24-alpine as builder
-
+# Stage 1: Base (Dependencies)
+FROM node:24-alpine as base
 WORKDIR /app
-
-# Install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy source and build
+# Stage 2: Builder (Production Build)
+FROM base as builder
 COPY . .
 RUN npm run build
 

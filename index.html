@@ -9,7 +9,7 @@
     />
     <title>MeshRF</title>
     <!-- PWA / iOS Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
@@ -22,6 +22,12 @@
     <script src="/env-config.js"></script>
   </head>
   <style>
+    body {
+        margin: 0;
+        background: #0a0a0f;
+        color: #fff;
+        overscroll-behavior: none; /* Prevent bounce on Mac/iOS */
+    }
     .loader-container {
       display: flex;
       flex-direction: column; /* Stack vertically */
@@ -33,13 +39,19 @@
     }
     h1 {
       margin: 0;
-      font-size: 32px; /* Slightly larger for impact without logo */
+      font-size: 32px;
       font-weight: 700;
-      background: linear-gradient(135deg, #fff 0%, #aaa 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #00f2ff; /* Neon Cyan */
       letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+    }
+    .img-logo {
+        width: 32px;
+        height: 32px;
+        filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.6));
     }
     .spinner {
       width: 40px;
@@ -48,6 +60,7 @@
       border-left-color: #00f2ff;
       border-radius: 50%;
       animation: spin 1s linear infinite;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
     }
     @keyframes spin {
       to {
@@ -58,7 +71,10 @@
   <body>
     <div id="root">
       <div class="loader-container">
-        <h1>meshRF</h1>
+        <h1>
+            <img src="/icon.svg" class="img-logo" alt="Logo" />
+            meshRF
+        </h1>
         <div class="spinner"></div>
       </div>
     </div>

@@ -8,3 +8,5 @@ Pillow
 redis
 scipy
 itmlogic
+celery
+sse-starlette

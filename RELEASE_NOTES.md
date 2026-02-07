@@ -1,33 +1,33 @@
-# Release v1.9.0: The "Pro-Max PWA" Upgrade 📱
+# Release v1.9.1: The "Neon Polish" Update 🎨
 
-This release transforms MeshRF into a high-fidelity Progressive Web App (PWA), specifically optimized for field use on iOS and mobile devices. We've smoothed out the rough edges of mobile browser interfaces to provide a truly native feel.
+This maintenance release focuses on UI consistency and codebase hygiene. We've tightened the aesthetic integration of map elements and added requested unit conversion features.
 
-## 🌟 Key Features
+## 🌟 Key Changes
 
-### 1. iOS "Pro-Max" Experience
+### 1. 📏 Unit Conversions
 
-- **Safe-Area Aware**: All toolbars, panels, and notifications now dynamicallly adjust to bypass the iPhone notch and system home indicators.
-- **Dynamic Viewport (100dvh)**: Eliminated the annoying "double scrollbar" and layout jumping typical of mobile Safari.
-- **Native Touch Latency**: Implemented `touch-action: manipulation` and disabled overscroll rubber-banding for a snappy, app-like response.
+- **Metric/Imperial Toggle**: Site analysis results (elevation, coverage area) now respect your global unit settings.
+  - Elevation: Meters ↔ Feet
+  - Area: km² ↔ mi²
 
-### 2. Intelligent PWA Lifecycle
+### 2. 🎨 Dark/Neon Theming
 
-- **User-Prompted Updates**: MeshRF now intelligently detects updates and prompts you to refresh, ensuring you never lose active planning data unexpectedly.
-- **Offline Reliability**: New **Offline Indicator** lets you know exactly when you're operating on local cached data vs. live backend physics.
+- **Map Popups**: Default white Leaflet popups have been replaced with **Dark Glassmorphism** panels (`#0a0a0f` bg) featuring neon cyan borders and glow effects.
+- **High-Vis Markers**: Optimization candidate nodes and "Ideal Spots" are now rendered in **Solid Cyan** (`#00f2ff`) to stand out against satellite imagery.
 
-### 3. Responsive Site Finder
+### 3. 🏗️ Site Finder & Multi-Site Refactor
 
-- **Grid Redesign**: The Site Selection Weights panel has been completely overhauled with a clean, grid-based UI for effortless weight adjustment on small screens.
-- **Glassmorphism Design**: Enhanced backgrounds with high-intensity blur for maximum legibility over map terrain.
+- **Ergonomics**: The Site Selection Weights panel has been completely rebuilt with a responsive grid layout, larger touch targets for sliders, and improved label legibility.
+- **Multi-Site Tab**: New dedicated interface for managing multiple candidate sites (`NodeManager`). Toggle between "Elevation Scan" (Auto) and "Multi-Site" (Manual) modes instantly.
+- **Performance**: Decoupled the analysis state from the main map event loop, eliminating "ghost clicks" where interacting with UI controls would accidentally place markers on the map.
 
-## 🛠️ Technical Fixes
+### 4. 🧹 Codebase Cleanup
 
-- **Physics Engine Handshake**: Fixed a crash in link analysis caused by legacy frontend path loss remnants.
-- **SW Destructuring Fix**: Resolved a critical "Symbol.iterator" error in the Service Worker update hook.
-- **High-Res Assets**: Added a high-resolution `apple-touch-icon.png` for a premium home screen presence.
+- **Dead Code Removal**: Pruned unused `ViewshedLayer.js` (replaced by Wasm) and unused Python imports.
+- **Console Silence**: Removed verbose debug logging from the viewshed engine for a cleaner developer console.
+- **Docker Standards**: Formalized "Docker-First" development rules in the repository documentation.
 
 ## 🚀 How to Upgrade
 
-1. Pull the latest changes: `git pull origin main`
-2. **Clear Cache**: If using as a PWA, wait for the **Update Available** prompt and click **Refresh Now**.
-3. Docker restart (optional but recommended): `docker compose up -d`
+1. Pull changes: `git pull origin main`
+2. **Rebuild Containers** (for backend cleanup): `docker compose -f docker-compose.dev.yml up -d --build`

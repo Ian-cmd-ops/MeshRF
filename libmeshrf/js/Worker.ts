@@ -112,16 +112,16 @@ function handleViewshed(id: string, payload: any) {
     
     // elevation is Float32Array
     const byteSize = elevation.length * 4;
-    console.log(`[Worker] Allocating ${byteSize} bytes for viewshed`);
+    // console.log(`[Worker] Allocating ${byteSize} bytes for viewshed`);
     const ptr = module._malloc(byteSize);
 
     try {
-        console.log(`[Worker] Setting HEAPF32 data`);
+        // console.log(`[Worker] Setting HEAPF32 data`);
         module.HEAPF32.set(elevation, ptr / 4);
 
-        console.log(`[Worker] Calling C++ calculate_viewshed with w=${width}, h=${height}, tx=(${tx_x},${tx_y}), dist=${max_dist}`);
+        // console.log(`[Worker] Calling C++ calculate_viewshed with w=${width}, h=${height}, tx=(${tx_x},${tx_y}), dist=${max_dist}`);
         const resultVec = module.calculate_viewshed(ptr, width, height, tx_x, tx_y, tx_h, max_dist);
-        console.log(`[Worker] C++ returned resultVec. Size: ${resultVec.size()}`);
+        // console.log(`[Worker] C++ returned resultVec. Size: ${resultVec.size()}`);
         
         const size = resultVec.size();
         const resultArr = new Uint8Array(size);
@@ -131,7 +131,7 @@ function handleViewshed(id: string, payload: any) {
         
         resultVec.delete();
         
-        console.log(`[Worker] Posting result back`);
+        // console.log(`[Worker] Posting result back`);
         (self as any).postMessage({ id, type: 'CALCULATE_VIEWSHED_RESULT', result: resultArr }, [resultArr.buffer]);
 
     } finally {

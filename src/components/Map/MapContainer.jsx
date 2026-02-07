@@ -14,7 +14,7 @@ import LinkLayer from "./LinkLayer";
 import LinkAnalysisPanel from "./LinkAnalysisPanel";
 import OptimizationLayer from "./OptimizationLayer";
 import { useRF } from "../../context/RFContext";
-import { calculateLinkBudget, calculateOkumuraHata } from "../../utils/rfMath";
+import { calculateLinkBudget } from "../../utils/rfMath";
 import { DEVICE_PRESETS } from "../../data/presets";
 import * as turf from "@turf/turf";
 import DeckGLOverlay from "./DeckGLOverlay";
@@ -32,11 +32,8 @@ import CoverageClickHandler from "./Controls/CoverageClickHandler";
 import BatchNodesPanelWrapper from "./Controls/BatchNodesPanelWrapper";
 import MapToolbar from "./UI/MapToolbar";
 import GuidanceOverlays from "./UI/GuidanceOverlays";
-<<<<<<< Updated upstream
-=======
 import SiteAnalysisPanel from "./UI/SiteAnalysisPanel";
 import SiteAnalysisResultsPanel from "./UI/SiteAnalysisResultsPanel";
->>>>>>> Stashed changes
 
 // Fix for default marker icon issues in React Leaflet
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -102,8 +99,6 @@ const MapComponent = () => {
     loading: false,
   });
   const [selectedBatchNodes, setSelectedBatchNodes] = useState([null, null]); // Track selected batch nodes: [TX_node, RX_node]
-<<<<<<< Updated upstream
-=======
   const [siteAnalysisMode, setSiteAnalysisMode] = useState('auto'); // 'auto' | 'manual'
   const [lastClickedLocation, setLastClickedLocation] = useState(null); // click {lat, lng} for manual mode
   const [siteSelectionWeights, setSiteSelectionWeights] = useState({
@@ -113,11 +108,10 @@ const MapComponent = () => {
   });
   const [showAnalysisResults, setShowAnalysisResults] = useState(false);
   const [map, setMap] = useState(null);
->>>>>>> Stashed changes
 
   // Propagation Model State
   const [propagationSettings, setPropagationSettings] = useState({
-    model: "Hata", // Default to Realistic
+    model: "itm", // Default to Longley-Rice (v1.8+)
     environment: "urban_small", // Default to Urban
   });
   const selectionRef = React.useRef(0); // Track last selection time to prevent identical double-clicks
@@ -257,22 +251,11 @@ const MapComponent = () => {
     });
 
     // Determine Path Loss logic
-    let pathLossVal = null; // Default to FSPL (calculated inside if null)
-
     const configA = nodeConfigs.A;
     const configB = nodeConfigs.B;
 
-    if (propagationSettings.model === "Hata") {
-      // Use actual configured heights
-      // Okumura-Hata expects heights in meters (which we store)
-      pathLossVal = calculateOkumuraHata(
-        distance,
-        freq,
-        configA.antennaHeight,
-        configB.antennaHeight,
-        propagationSettings.environment,
-      );
-    }
+    // Use backend path loss if available (calculated by LinkLayer), otherwise null (FSPL)
+    let pathLossVal = linkStats.backendPathLoss || null;
 
     budget = calculateLinkBudget({
       txPower: configA.txPower,
@@ -392,10 +375,6 @@ const MapComponent = () => {
     }
     const imageData = new ImageData(rgbaData, width, height);
 
-    console.log(
-      `[MapContainer] Adding Stitched Viewshed Layer. Bounds:`,
-      bounds,
-    );
     deckLayers.push(
       new WasmViewshedLayer({
         id: "wasm-viewshed-layer-stitched",
@@ -691,14 +670,10 @@ const MapComponent = () => {
             [setToolMode],
           )}
           onStateUpdate={handleOptimizationStateUpdate}
-<<<<<<< Updated upstream
-        />
-=======
           weights={siteSelectionWeights}
         />
         
         {/* SiteAnalysisPanel moved outside to prevent click-through */}
->>>>>>> Stashed changes
 
         {/* Batch Nodes Rendering */}
         {batchNodes.length > 0 &&
@@ -803,11 +778,19 @@ const MapComponent = () => {
                             <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ color: '#888' }}>Elevation:</span>
-                                    <span style={{ color: '#00f2ff', fontWeight: 'bold' }}>{res.elevation} m</span>
+                                    <span style={{ color: '#00f2ff', fontWeight: 'bold' }}>
+                                        {units === 'imperial' 
+                                            ? `${(res.elevation * 3.28084).toFixed(1)} ft` 
+                                            : `${res.elevation} m`}
+                                    </span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ color: '#888' }}>Coverage:</span>
-                                    <span style={{ color: '#00f2ff', fontWeight: 'bold' }}>{res.coverage_area_km2} km²</span>
+                                    <span style={{ color: '#00f2ff', fontWeight: 'bold' }}>
+                                        {units === 'imperial' 
+                                            ? `${(res.coverage_area_km2 * 0.386102).toFixed(2)} mi²` 
+                                            : `${res.coverage_area_km2} km²`}
+                                    </span>
                                 </div>
                                 <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>
                                     ({res.coverage_points} visible points)
@@ -1039,6 +1022,7 @@ const MapComponent = () => {
       {showAnalysisResults && simResults && simResults.length > 0 && (
         <SiteAnalysisResultsPanel 
           results={simResults}
+          units={units}
           onCenter={(res) => {
               if (map) {
                   map.flyTo([res.lat, res.lon], 15);
@@ -1046,8 +1030,8 @@ const MapComponent = () => {
           }}
           onClear={() => {
               setShowAnalysisResults(false);
-              // Clear results in store
-              useSimulationStore.setState({ results: null });
+              // Fully reset store (nodes, results, overlay)
+              useSimulationStore.getState().reset();
           }}
           onRunNew={() => {
               setShowAnalysisResults(false);

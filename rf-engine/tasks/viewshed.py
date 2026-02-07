@@ -25,7 +25,7 @@ def calculate_batch_viewshed(self, params):
     Calculate viewsheds for a list of nodes.
     params: { "nodes": [ {lat, lon, height, ...} ], "options": {"radius": 5000, "optimize_n": 3} }
     """
-    from core.algorithms import calculate_viewshed, greedy_max_coverage
+    from core.algorithms import calculate_viewshed
     import base64
     from io import BytesIO
     from PIL import Image

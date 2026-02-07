@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-02-06
+
+### Added
+
+- **Unit Conversion**: `SiteAnalysisResultsPanel` and Map Popups now support **Metric (m/km²)** and **Imperial (ft/mi²)** switching based on user settings.
+- **Themed UI**:
+  - **Neumorphic/Dark Popups**: Leaflet popups now match the application's "Deep Space Dark" theme (`#0a0a0f`) with neon cyan borders.
+  - **Cyan Markers**: Optimization "ghost nodes" and "Ideal Spots" are now Solid Neon Cyan (`#00f2ff`) for better visibility against dark maps.
+
+### Changed
+
+- **Code Cleanup**: Removed legacy `ViewshedLayer.js` and unused backend imports (`scipy` filters, `greedy_max_coverage`).
+- **Site Analysis Tool**: Significant refactor of the **Site Finder Panel** (formerly `SiteSelectionSettings`):
+  - **Grid Layout**: Optimized slider controls for mobile touch targets.
+  - **Responsive Width**: Panel now expands to 380px for better readability.
+  - **Architecture**: Decoupled state management from map events to prevent ghost clicks.
+  - **Multi-Site Manager**: Added dedicated "Multi-Site" tab for managing candidate node lists manualy.
+- **Developer Experience**:
+  - Updated `GEMINI.md` with strict **Docker-First** execution rules and a new **UI Style Guide**.
+  - Silenced excessive console logging in `Worker.ts` and `MapContainer.jsx`.
+
 ## [1.9.0] - 2026-02-06
 
 ### Added

@@ -1,4 +1,4 @@
-# meshRF 📡 v1.9.0
+# meshRF 📡 v1.9.1
 
 A professional-grade RF propagation and link analysis tool designed for LoRa Mesh networks (Meshtastic, Reticulum, Sidewinder). Built with **React**, **Leaflet**, and a high-fidelity **Python Geodetic Physics Engine**.
 
@@ -79,6 +79,12 @@ meshRF is fully containerized and easy to deploy:
    git clone https://github.com/d3mocide/meshrf.git
    cd meshrf
    docker compose up -d
+   ```
+
+   **For Developers (Hot-Reloading):**
+
+   ```bash
+   docker compose -f docker-compose.dev.yml up -d --build
    ```
 
 2. **Access the App**:

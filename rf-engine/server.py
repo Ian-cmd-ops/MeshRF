@@ -174,6 +174,66 @@ def get_elevation_tile(z: int, x: int, y: int):
     return Response(content=buf.getvalue(), media_type="image/png")
 
 
+
+# --- Async Task Endpoints ---
+
+@app.post("/scan/start")
+def start_scan_endpoint(req: dict):
+    """
+    Start asynchronous batch viewshed scan (Celery).
+    """
+    from tasks.viewshed import calculate_batch_viewshed
+    
+    nodes = req.get("nodes", [])
+    optimize_n = req.get("optimize_n", None)
+    
+    if not nodes:
+        return {"status": "error", "message": "No nodes provided"}
+
+    # Start Celery Task
+    task = calculate_batch_viewshed.delay({
+        "nodes": nodes,
+        "options": {
+            "radius": 5000,
+            "optimize_n": optimize_n
+        }
+    })
+    
+    return {"status": "started", "task_id": task.id}
+
+
+@app.get("/task_status/{task_id}")
+async def task_status_endpoint(task_id: str):
+    """
+    SSE Endpoint for Task Progress.
+    """
+    from sse_starlette.sse import EventSourceResponse
+    from celery.result import AsyncResult
+    from worker import celery_app
+    import json
+    import asyncio
+
+    async def event_generator():
+        task = AsyncResult(task_id, app=celery_app)
+        while True:
+            # Check status
+            if task.state == 'PENDING':
+                yield json.dumps({"event": "progress", "data": {"progress": 0}})
+            elif task.state == 'PROGRESS':
+                meta = task.info or {}
+                yield json.dumps({"event": "progress", "data": meta})
+            elif task.state == 'SUCCESS':
+                yield json.dumps({"event": "complete", "data": task.result})
+                break
+            elif task.state == 'FAILURE':
+                yield json.dumps({"event": "error", "data": str(task.info)})
+                break
+            
+            await asyncio.sleep(0.5)
+
+    return EventSourceResponse(event_generator())
+
+
 class OptimizeRequest(BaseModel):
     min_lat: float
     min_lon: float

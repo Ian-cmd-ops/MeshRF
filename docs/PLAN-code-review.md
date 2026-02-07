@@ -6,15 +6,15 @@ Remove unused code (Frontend/Backend) and report duplicates.
 
 ## Tasks
 
-- [ ] **Frontend Audit**: Run `npx knip` (dry-run) to find unused exports/files.
-- [ ] **Backend Audit**: Run `vulture rf-engine/` to find dead Python code.
-- [ ] **Asset Cleanup**: Check `public/` for unused media.
-- [ ] **Duplicate Report**: Run `jscpd src rf-engine` (report only).
-- [ ] **Cleanup**: Delete confirmed unused files/code.
-- [ ] **Verify**: Run `npm run build` and tests.
+- [x] **Frontend Audit**: Run `docker exec meshrf_dev npx knip` to find unused exports/files.
+- [x] **Backend Audit**: Run `docker exec -it rf_engine_dev pip install vulture && docker exec -it rf_engine_dev vulture .` to find dead Python code.
+- [x] **Asset Cleanup**: Check `public/` manually (host is fine for file listing).
+- [x] **Duplicate Report**: Run `docker exec meshrf_dev npx jscpd src` (report only).
+- [x] **Cleanup**: Delete confirmed unused files/code.
+- [x] **Verify**: Run `docker exec meshrf_dev npm run build`.
 
 ## Done When
 
-- [ ] Unused items deleted.
-- [ ] Duplicates reported.
-- [ ] Build passes.
+- [x] Unused items deleted.
+- [x] Duplicates reported.
+- [x] Build passes.

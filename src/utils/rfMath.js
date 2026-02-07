@@ -161,7 +161,7 @@ export const calculateFresnelPolygon = (p1, p2, freqMHz, steps = 30) => {
  * @param {number} kFactor - Standard Refraction Factor (default 1.33)
  * @returns {number} Bulge height in meters
  */
-export const calculateEarthBulge = (distKm, totalDistKm, kFactor = RF_CONSTANTS.K_FACTOR_DEFAULT) => {
+const calculateEarthBulge = (distKm, totalDistKm, kFactor = RF_CONSTANTS.K_FACTOR_DEFAULT) => {
   // Earth Radius (km)
   const R = RF_CONSTANTS.EARTH_RADIUS_KM;
   const Re = R * kFactor; // Effective Radius

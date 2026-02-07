@@ -30,8 +30,6 @@ const SiteAnalysisPanel = ({
             borderBottom: isMobile ? 'none' : '1px solid #00f2ff33',
             background: 'rgba(10, 10, 15, 0.98)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid #00f2ff33',
-            borderRadius: '12px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8)',
             zIndex: 2000,
             display: 'flex',

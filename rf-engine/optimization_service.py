@@ -1,6 +1,6 @@
 
 import numpy as np
-from scipy.ndimage import maximum_filter
+
 import math
 import rf_physics
 

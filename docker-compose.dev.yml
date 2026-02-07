@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      target: builder # Stop at Node stage, don't build Nginx
+      target: base # Stop at dependency stage
     container_name: meshrf_dev
     command: npm run dev -- --host
     ports:

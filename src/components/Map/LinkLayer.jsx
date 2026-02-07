@@ -310,7 +310,7 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
                     }}
                 >
                     <Popup>
-                        <div><strong>TX (Point A)</strong></div>
+                        <div style={{ paddingRight: '24px' }}><strong>TX (Point A)</strong></div>
                         {(p1.locked || locked) && <div><small>(Locked)</small></div>}
                         <div style={{marginTop: '4px', fontSize: '0.9em', color: '#888'}}>
                             {editMode === 'A' ? "(Editing)" : "Click to Edit"}
@@ -334,7 +334,7 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
                     }}
                 >
                     <Popup>
-                        <div><strong>RX (Point B)</strong></div>
+                        <div style={{ paddingRight: '24px' }}><strong>RX (Point B)</strong></div>
                         {(p2.locked || locked) && <div><small>(Locked)</small></div>}
                         <div style={{marginTop: '4px', fontSize: '0.9em', color: '#888'}}>
                             {editMode === 'B' ? "(Editing)" : "Click to Edit"}
