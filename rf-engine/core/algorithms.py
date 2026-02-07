@@ -3,7 +3,7 @@ import math
 import heapq
 from rf_physics import haversine_distance, calculate_path_loss
 
-def calculate_viewshed(tile_manager, lat, lon, height_agl, radius_m, resolution_m=30):
+def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, resolution_m=30, model='itm'):
     """
     Calculate viewshed for a single point.
     Returns: (lat_grid, lon_grid, visibility_grid)
@@ -11,13 +11,13 @@ def calculate_viewshed(tile_manager, lat, lon, height_agl, radius_m, resolution_
     """
     # 1. Define Bounds
     lat_deg_per_m = 1 / 111320.0
-    lon_deg_per_m = 1 / (111320.0 * math.cos(math.radians(lat)))
+    lon_deg_per_m = 1 / (111320.0 * math.cos(math.radians(tx_lat)))
     
     lat_radius = radius_m * lat_deg_per_m
     lon_radius = radius_m * lon_deg_per_m
     
-    min_lat, max_lat = lat - lat_radius, lat + lat_radius
-    min_lon, max_lon = lon - lon_radius, lon + lon_radius
+    min_lat, max_lat = tx_lat - lat_radius, tx_lat + lat_radius
+    min_lon, max_lon = tx_lon - lon_radius, tx_lon + lon_radius
     
     # 2. Create Grid
     rows = int((max_lat - min_lat) / (resolution_m * lat_deg_per_m))
@@ -65,7 +65,7 @@ def calculate_viewshed(tile_manager, lat, lon, height_agl, radius_m, resolution_
     indices = []
     for r in range(rows_coarse):
         for c in range(cols_coarse):
-            dist = haversine_distance(lat, lon, lats[r], lons[c])
+            dist = haversine_distance(tx_lat, tx_lon, lats[r], lons[c])
             if dist <= radius_m:
                 coords.append((lats[r], lons[c]))
                 indices.append((r, c))
@@ -74,8 +74,8 @@ def calculate_viewshed(tile_manager, lat, lon, height_agl, radius_m, resolution_
     elevs = tile_manager.get_elevations_batch(coords)
     
     # Source Elevation
-    source_elev = tile_manager.get_elevation(lat, lon)
-    tx_alt = source_elev + height_agl
+    source_elev = tile_manager.get_elevation(tx_lat, tx_lon)
+    tx_alt = source_elev + tx_h
     
     for i, (r, c) in enumerate(indices):
         rx_elev = elevs[i]
@@ -87,8 +87,8 @@ def calculate_viewshed(tile_manager, lat, lon, height_agl, radius_m, resolution_
         # For greedy placement, we might just use "Radio Horizon" or simple FSPL + Hata first.
         
         # Phase 1: Hata Model only (Terrain Independent mostly, except for height corrections)
-        dist_m = haversine_distance(lat, lon, lats[r], lons[c])
-        loss = calculate_path_loss(dist_m, [], 915.0, height_agl, 2.0, model='hata', environment='suburban')
+        dist_m = haversine_distance(tx_lat, tx_lon, lats[r], lons[c])
+        loss = calculate_path_loss(dist_m, [], 915.0, tx_h, 2.0, model=model, environment='suburban')
         
         # Max Path Loss (Sensitivity) ~ 120-130 dB for LoRa
         if loss < 128.0:
@@ -96,7 +96,7 @@ def calculate_viewshed(tile_manager, lat, lon, height_agl, radius_m, resolution_
             
     return grid, lats, lons
 
-def greedy_max_coverage(tile_manager, candidates, num_nodes, radius_m=5000):
+def greedy_coverage(tile_manager, candidates, n_select, radius_m=5000, model='itm'):
     """
     Select N nodes that maximize coverage area.
     candidates: List of NodeConfig objects

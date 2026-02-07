@@ -42,7 +42,7 @@ export const calculateLink = async (nodeA, nodeB, freq, h1, h2, model, env) => {
                 frequency_mhz: Number(freq),
                 tx_height: Number(h1),
                 rx_height: Number(h2),
-                model: model || 'fspl',
+                model: model || 'itm',
                 environment: env || 'suburban'
             })
         });

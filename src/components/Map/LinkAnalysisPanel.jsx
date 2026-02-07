@@ -206,7 +206,7 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagat
                     <div style={{ color: '#ccc', marginBottom: '16px' }}>
                         The engine uses physical models to predict signal strength across the terrain.
                     </div>
-                    <div style={{ flexGrow: 1 }}>
+                    <div style={{ flexGrow: 1, overflowY: 'auto', paddingRight: '12px', marginBottom: '16px' }}>
                         <div style={{ marginBottom: '16px', fontSize: '0.9em' }}>
                             <div style={{ marginBottom: '8px' }}>
                                 <strong style={{ color: '#00f2ff' }}>FSPL:</strong> Idealized "Line of Sight" calculation. Best for very short distances or space-to-earth links.
@@ -240,24 +240,42 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagat
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div style={{ marginTop: '20px', marginBottom: '8px', padding: '16px', background: 'rgba(0, 242, 255, 0.03)', border: '1px solid rgba(0, 242, 255, 0.15)', borderRadius: '8px' }}>
+                            <div style={{ color: '#00f2ff', fontWeight: 'bold', fontSize: '0.85em', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                                Propagation Analysis Note
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.6' }}>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <span style={{ color: '#00f2ff', fontWeight: '600' }}>Statistical (Hata)</span> ignores terrain and assumes flat ground. This results in heavy signal penalties for high-elevation links.
+                                </div>
+                                <div style={{ color: '#ccc' }}>
+                                    <span style={{ color: '#00ff41', fontWeight: '600' }}>Terrain (ITM)</span> accounts for hills and clear line-of-sight, providing accurate high-performance predictions for elevated antennas.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <button 
                         onClick={() => setShowModelHelp(false)}
                         style={{ 
-                            marginTop: 'auto', 
+                            flexShrink: 0,
                             width: '100%', 
-                            background: 'rgba(0, 242, 255, 0.1)', 
-                            border: '1px solid #00f2ff66', 
+                            background: '#0a0a0f', // Opaque dark background
+                            border: '1px solid #00f2ff88', 
                             color: '#00f2ff', 
-                            padding: '12px', 
+                            padding: '14px', 
                             borderRadius: '8px', 
                             cursor: 'pointer', 
                             fontWeight: 'bold', 
                             fontSize: '14px',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 -8px 24px rgba(0,0,0,0.8)' // Stronger shadow to lift from content
                         }}
-                        onMouseOver={e => e.target.style.background = 'rgba(0, 242, 255, 0.2)'}
-                        onMouseOut={e => e.target.style.background = 'rgba(0, 242, 255, 0.1)'}
+                        onMouseOver={e => e.target.style.background = 'rgba(0, 242, 255, 0.1)'}
+                        onMouseOut={e => e.target.style.background = '#0a0a0f'}
                     >
                         Got it
                     </button>
@@ -380,7 +398,7 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagat
                                  <select 
                                     id="prop-model"
                                     name="prop-model"
-                                    value={propagationSettings.model || "fspl"}
+                                    value={propagationSettings.model || "itm"}
                                     onChange={(e) => setPropagationSettings(prev => ({ ...prev, model: e.target.value }))}
                                     style={{ background: '#222', color: '#00f2ff', border: '1px solid #444', padding: '4px', borderRadius: '4px', fontSize: '0.8em', fontWeight: 'bold' }}
                                  >

@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CSV Bulk Import**: Added ability to import lists of sites via CSV templates in the Multi-Site tool (`NodeManager`).
 - **Global Custom Scrollbar**: Unified the application with a 4px neon-cyan cyberpunk scrollbar consistent across all panels.
-- **Propagation Model Guide**: Added an interactive guide in the Link Analysis tool with detailed descriptions of FSPL, Hata, and ITM models.
+- **Propagation Model Guide**: Added an interactive, scrollable guide in the Link Analysis tool with detailed descriptions of FSPL, Hata, and ITM models, including a summarized "Analysis Note" for quick reference.
+- **Default Analysis Model**: Set **ITM (Longley-Rice)** as the default propagation model for higher accuracy terrain analysis by default.
 
 ### Changed
 
