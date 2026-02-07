@@ -18,8 +18,9 @@ This major update transforms meshRF into a truly professional-grade analysis sui
 
 ### 3. 📖 Propagation Model Guide
 
-- **Integrated Knowledge**: Added a comprehensive guide explaining the physics behind **FSPL**, **Okumura-Hata**, and **ITM (Longley-Rice)**.
-- **Actionable Advice**: Includes a recommended use-case table to help engineers choose the right mathematical model for their environment.
+- **Refined Interaction**: The guide is now scrollable with a fixed "Got It" button, allowing for more detailed technical descriptions without cluttering the UI.
+- **Propagation Analysis Note**: Enhanced visual highlights contrast the benefits of statistical (Hata) vs terrain-aware (ITM) models.
+- **Intelligent Defaults**: Analysis now starts on **ITM (Longley-Rice)** by default, providing superior terrain accuracy from the first click.
 
 ### 4. 🎨 Global UI Polish
 

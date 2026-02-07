@@ -73,7 +73,7 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
         const h1 = parseFloat(currentConfig.nodeConfigs.A.antennaHeight);
         const h2 = parseFloat(currentConfig.nodeConfigs.B.antennaHeight);
         const currentFreq = currentConfig.freq;
-        const currentModel = propagationSettings?.model?.toLowerCase() || 'fspl';
+        const currentModel = propagationSettings?.model?.toLowerCase() || 'itm';
         const currentEnv = propagationSettings?.environment || 'suburban';
 
         // Parallel fetch: Elevation for profile/chart, and Path Loss from Backend
