@@ -36,6 +36,27 @@ services:
     networks:
       - meshrf_net
 
+  rf-worker:
+    build: ./rf-engine
+    container_name: rf_worker_dev
+    # Overlay dev volumes for hot-reloading code in worker
+    volumes:
+      - ./rf-engine:/app
+      - ./cache:/app/cache
+    # Celery worker with autoreload (using watchdog if available, otherwise just worker)
+    # Using normal worker for now, manual restart needed for deep logic changes if watchdog not set up
+    command: celery -A worker.celery_app worker --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ELEVATION_API_URL=http://opentopodata:5000
+      - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
+    depends_on:
+      - rf-engine
+      - redis
+    networks:
+      - meshrf_net
+
   redis:
     image: redis:alpine
     user: root

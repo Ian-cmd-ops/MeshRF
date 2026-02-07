@@ -28,7 +28,18 @@ class AnalysisRequest(BaseModel):
 import redis
 from tile_manager import TileManager
 import rf_physics
+<<<<<<< Updated upstream
 from rf_physics import analyze_link
+=======
+from optimization_service import OptimizationService
+from sse_starlette.sse import EventSourceResponse
+import asyncio
+from worker import celery_app
+from tasks.viewshed import calculate_batch_viewshed
+from models import NodeCollection, NodeConfig
+
+
+>>>>>>> Stashed changes
 
 # --- Initialization ---
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
@@ -44,6 +55,39 @@ class LinkRequest(BaseModel):
     frequency_mhz: float
     tx_height: float
     rx_height: float
+
+
+@app.get("/task_status/{task_id}")
+async def task_status(task_id: str):
+    """
+    Stream task progress via SSE.
+    """
+    async def event_generator():
+        import json
+        try:
+            while True:
+                result = celery_app.AsyncResult(task_id)
+                state = result.state
+                
+                if state == 'PENDING':
+                    yield {"data": json.dumps({"event": "status", "data": "pending"})}
+                elif state == 'PROGRESS':
+                    yield {"data": json.dumps({"event": "progress", "data": result.info or {}})}
+                elif state == 'SUCCESS':
+                    yield {"data": json.dumps({"event": "complete", "data": result.result})}
+                    break
+                elif state == 'FAILURE':
+                    yield {"data": json.dumps({"event": "error", "data": str(result.result)})}
+                    break
+                
+                await asyncio.sleep(1)
+        except Exception as e:
+            yield {"data": json.dumps({"event": "error", "data": str(e)})}
+
+    return EventSourceResponse(
+        event_generator(),
+        ping=15
+    )
 
 
 @app.post("/calculate-link")
@@ -219,3 +263,25 @@ def optimize_location_endpoint(req: OptimizeRequest):
             status_code=500, 
             content={"status": "error", "message": f"Server Error: {str(e)}"}
         )
+
+@app.post("/scan/start")
+def start_scan_endpoint(req: NodeCollection):
+    """
+    Start an async Elevation Scan (Multi-node Viewshed).
+    Returns task_id to track via SSE.
+    """
+    # Convert Pydantic models to dict for Celery JSON serialization
+    nodes_data = [node.dict() for node in req.nodes]
+    options = {"radius": 5000} # Default 5km for now, can extract from req
+    
+    # Enqueue Task
+    task = calculate_batch_viewshed.delay({
+        "nodes": nodes_data, 
+        "options": {
+            **options,
+            "optimize_n": req.optimize_n
+        }
+    })
+    
+    return {"status": "started", "task_id": task.id}
+

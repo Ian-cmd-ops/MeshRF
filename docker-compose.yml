@@ -30,8 +30,28 @@ services:
       - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
     volumes:
       - ./cache:/app/cache
+
     restart: unless-stopped
     depends_on:
+      - redis
+    networks:
+      - meshrf_net
+
+  rf-worker:
+    image: ghcr.io/d3mocide/meshrf-rf-engine:latest
+    container_name: rf_worker
+    command: celery -A worker.celery_app worker --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ELEVATION_API_URL=http://opentopodata:5000
+      - ELEVATION_DATASET=${ELEVATION_DATASET:-ned10m}
+    volumes:
+      - ./cache:/app/cache
+
+    restart: unless-stopped
+    depends_on:
+      - rf-engine
       - redis
     networks:
       - meshrf_net

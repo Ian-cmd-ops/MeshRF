@@ -24,6 +24,7 @@ import RFCoverageLayer from "./RFCoverageLayer";
 import { useViewshedTool } from "../../hooks/useViewshedTool";
 import { useRFCoverageTool } from "../../hooks/useRFCoverageTool";
 import BatchNodesPanel from "./BatchNodesPanel";
+import useSimulationStore from "../../store/useSimulationStore";
 
 // Refactored Sub-Components
 import LocateControl from "./Controls/LocateControl";
@@ -31,6 +32,11 @@ import CoverageClickHandler from "./Controls/CoverageClickHandler";
 import BatchNodesPanelWrapper from "./Controls/BatchNodesPanelWrapper";
 import MapToolbar from "./UI/MapToolbar";
 import GuidanceOverlays from "./UI/GuidanceOverlays";
+<<<<<<< Updated upstream
+=======
+import SiteAnalysisPanel from "./UI/SiteAnalysisPanel";
+import SiteAnalysisResultsPanel from "./UI/SiteAnalysisResultsPanel";
+>>>>>>> Stashed changes
 
 // Fix for default marker icon issues in React Leaflet
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -46,6 +52,25 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 import { useMapEvents, useMap } from "react-leaflet";
+
+// Helper component to capture map clicks
+const MultiSiteClickHandler = ({ onLocationSelect }) => {
+    useMapEvents({
+        click(e) {
+            onLocationSelect({ lat: e.latlng.lat, lng: e.latlng.lng });
+        }
+    });
+    return null;
+};
+
+// Helper component to capture map instance
+const MapInstanceTracker = ({ setMap }) => {
+    const map = useMap();
+    React.useEffect(() => {
+        if (map) setMap(map);
+    }, [map, setMap]);
+    return null;
+};
 
 // MapComponent
 const MapComponent = () => {
@@ -77,6 +102,18 @@ const MapComponent = () => {
     loading: false,
   });
   const [selectedBatchNodes, setSelectedBatchNodes] = useState([null, null]); // Track selected batch nodes: [TX_node, RX_node]
+<<<<<<< Updated upstream
+=======
+  const [siteAnalysisMode, setSiteAnalysisMode] = useState('auto'); // 'auto' | 'manual'
+  const [lastClickedLocation, setLastClickedLocation] = useState(null); // click {lat, lng} for manual mode
+  const [siteSelectionWeights, setSiteSelectionWeights] = useState({
+    elevation: 0.5,
+    prominence: 0.3,
+    fresnel: 0.2
+  });
+  const [showAnalysisResults, setShowAnalysisResults] = useState(false);
+  const [map, setMap] = useState(null);
+>>>>>>> Stashed changes
 
   // Propagation Model State
   const [propagationSettings, setPropagationSettings] = useState({
@@ -261,6 +298,11 @@ const MapComponent = () => {
     setRfObserver(null);
     setSelectedBatchNodes([null, null]); // Reset to initial state
     setEditMode("GLOBAL"); // Clear node editing state
+    
+    // Clear Site Analysis states
+    useSimulationStore.getState().reset();
+    setShowAnalysisResults(false);
+    setLastClickedLocation(null);
   };
 
   const handleOptimizationStateUpdate = React.useCallback((state) => {
@@ -306,8 +348,34 @@ const MapComponent = () => {
     }
   };
 
+
+  // Simulation Store integration
+  const { nodes: simNodes, results: simResults, compositeOverlay } = useSimulationStore();
+
+  // Automatically show results panel when scan finishes
+  useEffect(() => {
+    if (simResults && simResults.length > 0) {
+      setShowAnalysisResults(true);
+    }
+  }, [simResults]);
+
   // Prepare DeckGL Layers
   const deckLayers = [];
+
+  // Composite coverage from Site Analysis
+  if (compositeOverlay && compositeOverlay.image) {
+      const { image, bounds } = compositeOverlay;
+      // image is base64 data url from backend
+      deckLayers.push(
+          new WasmViewshedLayer({
+              id: 'site-analysis-composite',
+              image: image,
+              bounds: [bounds[1], bounds[0], bounds[3], bounds[2]], // [minLon, minLat, maxLon, maxLat]
+              opacity: 0.6,
+              pickable: false
+          })
+      );
+  }
 
   // Viewshed Layer (Only active in 'viewshed' mode)
   if (toolMode === "viewshed" && resultLayer && resultLayer.data) {
@@ -443,6 +511,7 @@ const MapComponent = () => {
         style={{ height: "100%", width: "100%", background: "#0a0a0f" }}
         zoomControl={false}
       >
+        <MapInstanceTracker setMap={setMap} />
         <ZoomControl position={isMobile ? "topright" : "bottomright"} />
         <LocateControl />
         <CoverageClickHandler
@@ -604,14 +673,32 @@ const MapComponent = () => {
           />
         )}
 
+        {/* Multi-Site Click Handler */}
+        {toolMode === 'optimize' && siteAnalysisMode === 'manual' && (
+            <MultiSiteClickHandler 
+                onLocationSelect={(loc) => {
+                    // We'll pass this via a callback prop to the panel, or use a shared state
+                    // For now, let's lift a state "lastClickedLocation" in MapContainer and pass it down
+                    setLastClickedLocation(loc);
+                }} 
+            />
+        )}
+
         <OptimizationLayer
-          active={toolMode === "optimize"}
+          active={toolMode === "optimize" && siteAnalysisMode === 'auto'}
           setActive={React.useCallback(
             (active) => setToolMode(active ? "optimize" : "none"),
             [setToolMode],
           )}
           onStateUpdate={handleOptimizationStateUpdate}
+<<<<<<< Updated upstream
         />
+=======
+          weights={siteSelectionWeights}
+        />
+        
+        {/* SiteAnalysisPanel moved outside to prevent click-through */}
+>>>>>>> Stashed changes
 
         {/* Batch Nodes Rendering */}
         {batchNodes.length > 0 &&
@@ -663,6 +750,75 @@ const MapComponent = () => {
             );
           })}
 
+        {/* Temporary Node Marker (Before "Add" is clicked) */}
+        {toolMode === 'optimize' && siteAnalysisMode === 'manual' && lastClickedLocation && (
+            <Marker
+                key="temp-candidate"
+                position={[lastClickedLocation.lat, lastClickedLocation.lng]}
+                icon={L.divIcon({
+                    className: 'temp-node-icon',
+                    html: `<div style="
+                        background-color: transparent; 
+                        width: 16px; height: 16px; 
+                        border-radius: 50%; opacity: 0.8; 
+                        border: 2px dashed #00f2ff; 
+                        box-shadow: 0 0 5px rgba(0, 242, 255, 0.5);
+                    "></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8],
+                })}
+            >
+                <Popup>New Site Candidate</Popup>
+            </Marker>
+        )}
+
+        {/* Simulation Nodes Rendering (Multi-Site Analysis) */}
+        {toolMode === 'optimize' && siteAnalysisMode === 'manual' && simNodes.map((node) => (
+            <Marker
+                key={`sim-${node.id}`}
+                position={[node.lat, node.lon]}
+                icon={L.divIcon({
+                    className: 'sim-node-icon',
+                    html: `<div style="
+                        background-color: #00f2ff; 
+                        width: 14px; height: 14px; 
+                        border-radius: 50%; opacity: 1; 
+                        border: 2px solid white; 
+                        box-shadow: 0 0 10px #00f2ff;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 10px; font-weight: bold; color: black;
+                    ">${simResults ? '✓' : ''}</div>`,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7],
+                })}
+            >
+                <Popup>
+                    <strong>{node.name}</strong><br/>
+                    Lat: {node.lat.toFixed(5)}<br/>
+                    Lon: {node.lon.toFixed(5)}<br/>
+                    {simResults && Array.isArray(simResults) && (() => {
+                        const res = simResults.find(r => Math.abs(r.lat - node.lat) < 0.0001 && Math.abs(r.lon - node.lon) < 0.0001);
+                        if (!res) return null;
+                        return (
+                            <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#888' }}>Elevation:</span>
+                                    <span style={{ color: '#00f2ff', fontWeight: 'bold' }}>{res.elevation} m</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#888' }}>Coverage:</span>
+                                    <span style={{ color: '#00f2ff', fontWeight: 'bold' }}>{res.coverage_area_km2} km²</span>
+                                </div>
+                                <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>
+                                    ({res.coverage_points} visible points)
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </Popup>
+            </Marker>
+        ))}
+
         {/* Batch Nodes Panel - Must be inside MapContainer to use useMap hook */}
         {showBatchPanel && batchNodes.length > 0 && (
           <BatchNodesPanelWrapper
@@ -678,6 +834,15 @@ const MapComponent = () => {
           />
         )}
       </MapContainer>
+
+      <SiteAnalysisPanel 
+          active={toolMode === 'optimize'}
+          mode={siteAnalysisMode}
+          setMode={setSiteAnalysisMode}
+          weights={siteSelectionWeights}
+          setWeights={setSiteSelectionWeights}
+          selectedLocation={lastClickedLocation}
+      />
 
       {/* Tool Toggles */}
       <MapToolbar
@@ -867,6 +1032,28 @@ const MapComponent = () => {
           units={units}
           propagationSettings={propagationSettings}
           setPropagationSettings={setPropagationSettings}
+        />
+      )}
+
+      {/* Site Analysis Results Panel moved outside to prevent click-through */}
+      {showAnalysisResults && simResults && simResults.length > 0 && (
+        <SiteAnalysisResultsPanel 
+          results={simResults}
+          onCenter={(res) => {
+              if (map) {
+                  map.flyTo([res.lat, res.lon], 15);
+              }
+          }}
+          onClear={() => {
+              setShowAnalysisResults(false);
+              // Clear results in store
+              useSimulationStore.setState({ results: null });
+          }}
+          onRunNew={() => {
+              setShowAnalysisResults(false);
+              setToolMode('optimize'); 
+              setSiteAnalysisMode('manual');
+          }}
         />
       )}
 

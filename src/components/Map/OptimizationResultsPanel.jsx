@@ -18,7 +18,7 @@ const OptimizationResultsPanel = ({ results, onClose, onCenter, onReset, onRecal
         bottom: isMobile ? '0' : 'auto',
         right: isMobile ? '0' : '25px',
         left: isMobile ? '0' : 'auto',
-        width: isMobile ? '100%' : '320px',
+        width: isMobile ? '100%' : '360px',
         maxHeight: isMinimized ? '60px' : (isMobile ? '85dvh' : '600px'),
         background: 'rgba(10, 10, 15, 0.98)',
         backdropFilter: 'blur(15px)',
@@ -133,7 +133,7 @@ const OptimizationResultsPanel = ({ results, onClose, onCenter, onReset, onRecal
                 }}
             >
                 <h3 style={{ margin: 0, fontSize: '1.2em', fontWeight: 600, color: '#00f2ff' }}>
-                    Top {results.length} Ideal Spots
+                    Top {results.length} Highest Points
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div 
