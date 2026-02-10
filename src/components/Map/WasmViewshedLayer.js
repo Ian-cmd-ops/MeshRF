@@ -53,7 +53,7 @@ export default class WasmViewshedLayer extends BitmapLayer {
     const uniforms = {
         bounds: bounds || [0, 0, 0, 0],
         opacity: this.props.opacity !== undefined ? this.props.opacity : 1.0,
-        showShadows: this.props.showShadows !== undefined ? this.props.showShadows : true
+        showShadows: this.props.showShadows !== undefined ? this.props.showShadows : false
     };
     if (this.state.model && this.state.model.shaderInputs) {
       this.state.model.shaderInputs.setProps({ uniforms });

@@ -381,6 +381,7 @@ const MapComponent = () => {
         image: imageData,
         bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
         opacity: 0.6,
+        showShadows: true,
       }),
     );
   }
@@ -649,6 +650,7 @@ const MapComponent = () => {
               color: "#a855f7",
               dashArray: "10, 10",
               fill: false,
+              fillOpacity: 0,
               weight: 2,
             }}
           />

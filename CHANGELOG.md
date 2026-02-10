@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.2] - 2026-02-10
+
+### Fixed
+
+- **Persistent UI Cleanup**: Ensured the purple background is removed once and for all by explicitly disabling shadow rendering in the viewshed shader.
+- **Documentation**: Updated `README.md` with mesh planning features and versioning.
+
+## [1.14.1] - 2026-02-10
+
+### Fixed
+
+- **Multi-Site Interface Cleanup**: Removed the solid purple "shadow" background from candidate sites to improve map readability.
+- **Coverage Visuals Removal**: Removed the green composite coverage footprints from Multi-Site results to focus the UI on the new link topology graph.
+
 ## [1.14.0] - 2026-02-10
 
 ### Added
@@ -14,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Fresnel Clearance %** — ratio of clearance to first Fresnel zone at the worst obstruction point.
   - **Status** — `Viable` (≥60% Fresnel), `Degraded` (0–60%), or `Blocked` (<0%).
   - **Distance** — haversine distance between the two sites (metric/imperial).
-- **Marginal Coverage Metric**: Each site card now shows how much *unique* area it contributes to the network — area not already covered by any other selected site. Low unique-coverage % flags redundant placements.
+- **Marginal Coverage Metric**: Each site card now shows how much _unique_ area it contributes to the network — area not already covered by any other selected site. Low unique-coverage % flags redundant placements.
 - **Connectivity Score**: Each site now displays how many of the other selected sites it can reach (viable + degraded links), giving an immediate indicator of network centrality.
 - **Combined Coverage Total**: The results panel header now shows the total union area covered by all selected sites combined.
 - **Mesh Topology Tab**: New "Topology" tab in the results panel features:

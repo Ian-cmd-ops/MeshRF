@@ -1,17 +1,19 @@
-# Release v1.14.1: Multi-Site UI Cleanup
+# Release v1.14.2: UI Polish & Documentation Sync
 
-This minor release focuses on cleaning up the visual presentation of the **Multi-Site Analysis** tool. By removing redundant visual layers, we've made the link topology graph much easier to read and analyze.
+This release fixes a persistent issue where a purple background box could still appear during Multi-Site Analysis and updates the project documentation to mirror the recent mesh planning advancements.
 
-## Bug Fixes & UI Improvements
+## Bug Fixes
 
-### 1. Removed "Purple Box" Shadows
+- **Final UI Cleanup**: Fixed a condition where the viewshed's purple "shadow" overlay would persist on the map during optimization scans. Map readability is now fully restored.
 
-The solid purple background rendered for obstructed areas in candidate sites has been removed. This was previously making the map appear cluttered and "heavy". The maps are now back to their clean, sci-fi aesthetic.
+## Documentation Updates
 
-### 2. Streamlined Coverage Footprints
-
-We've removed the green "composite coverage" footprints from the Multi-Site analysis view. While useful for single-site scans, they were creating significant visual noise in multi-site mesh planning. The focus is now purely on the **Inter-Site Link Topology** and the data in the results panel.
+- **README Sync**: The main project documentation now fully reflects the v1.14 features:
+  - Inter-Node Link Matrix details.
+  - Marginal Coverage analysis metrics.
+  - Mesh Topology and connectivity scoring.
+  - Updated propagation model guidance.
 
 ---
 
-_For the major mesh planning features introduced in v1.14.0, please refer to the previous release notes._
+_For the major mesh planning features introduced in v1.14.0, please refer to the corresponding release notes._
