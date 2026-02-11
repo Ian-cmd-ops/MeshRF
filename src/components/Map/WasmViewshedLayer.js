@@ -26,8 +26,8 @@ void main() {
     float visible = texColor.r;
     
     if (visible > 0.0) {
-        // Visible: Brand Green (#00ff41)
-        fragColor = vec4(0.0, 1.0, 0.25, 0.5);
+        // Visible: Brand Purple (#a855f7 = RGB 168,85,247 / 255 = 0.659, 0.333, 0.969)
+        fragColor = vec4(0.659, 0.333, 0.969, 0.5);
     } else {
         // Obstructed: Brand Purple (#a855f7)
         // uShowShadows > 0.5 means enabled

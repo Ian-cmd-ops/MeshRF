@@ -45,23 +45,59 @@ def calculate_batch_viewshed(self, params):
     if not nodes_data:
         return {"status": "completed", "results": []}
 
-    # Helper to convert deg to m approx
-    # 1 deg lat = 111,320m
-    buffer_deg = (radius + 1000) / 111320.0 
+    # Calculate center latitude for projection scaling
+    lats = [float(n['lat']) for n in nodes_data]
+    lons = [float(n['lon']) for n in nodes_data]
+    mean_lat = sum(lats) / len(lats)
     
-    min_lat = min(float(n['lat']) for n in nodes_data) - buffer_deg
-    max_lat = max(float(n['lat']) for n in nodes_data) + buffer_deg
-    min_lon = min(float(n['lon']) for n in nodes_data) - buffer_deg
-    max_lon = max(float(n['lon']) for n in nodes_data) + buffer_deg
+    # Degrees per meter
+    # 1 deg lat is constant ~111.32 km
+    lat_deg_per_m = 1.0 / 111320.0
+    # 1 deg lon depends on latitude: cos(lat) * 111.32 km
+    # Use max(0.001, ...) to avoid div by zero at poles (unlikely but safe)
+    lon_deg_per_m = 1.0 / (111320.0 * max(0.001, np.cos(np.radians(mean_lat))))
+
+    # Buffer: radius + 1km safety margin
+    buffer_m = radius + 1000
+    buffer_lat = buffer_m * lat_deg_per_m
+    buffer_lon = buffer_m * lon_deg_per_m
     
-    # Define Global Master Grid (e.g. 100m resolution)
-    res_m = 100
-    rows = int((max_lat - min_lat) / (res_m / 111320.0))
-    cols = int((max_lon - min_lon) / (res_m / 111320.0))
+    min_lat = min(lats) - buffer_lat
+    max_lat = max(lats) + buffer_lat
+    min_lon = min(lons) - buffer_lon
+    max_lon = max(lons) + buffer_lon
+    
+    # Define Global Master Grid
+    # Target resolution: 100m (default)
+    target_res_m = 100.0
+    
+    # Calculate grid dimensions based on target resolution
+    # Height uses lat conversion, Width uses lon conversion (at mean lat)
+    # Height (m) = (max_lat - min_lat) / lat_deg_per_m
+    # Width (m)  = (max_lon - min_lon) / lon_deg_per_m
+    
+    # But we can just divide deg difference by (res_m * deg_per_m)
+    rows = int((max_lat - min_lat) / (target_res_m * lat_deg_per_m))
+    cols = int((max_lon - min_lon) / (target_res_m * lon_deg_per_m))
     
     # Cap size to prevent OOM
-    rows = min(rows, 1024)
-    cols = min(cols, 1024)
+    # usage: 2048x2048 = 4MP = ~4MB (uint8) -> Safe
+    # 4096 is nice and big (16MB)
+    MAX_DIM = 4096
+    
+    if rows > MAX_DIM or cols > MAX_DIM:
+        # Scale down resolution to fit
+        scale_factor = max(rows / MAX_DIM, cols / MAX_DIM)
+        # New resolution is larger (coarser)
+        res_m = target_res_m * scale_factor
+        
+        # Re-calc rows/cols
+        rows = int((max_lat - min_lat) / (res_m * lat_deg_per_m))
+        cols = int((max_lon - min_lon) / (res_m * lon_deg_per_m))
+        
+        logger.warning(f"Viewshed grid too large. Scaling resolution from {target_res_m}m to {res_m:.1f}m. Grid: {rows}x{cols}")
+    else:
+        res_m = target_res_m
     
     master_grid = np.zeros((rows, cols), dtype=np.uint8)
     

@@ -56,7 +56,7 @@ export const RFProvider = ({ children }) => {
     device: "HELTEC_V3",
     antenna: "DIPOLE",
     txPower: 20,
-    antennaHeight: 5,
+    antennaHeight: 9.144, // 30 feet in meters
     antennaGain: ANTENNA_PRESETS.DIPOLE.gain,
     cableType: "LMR400",
     cableLength: 0.3048, // 1 ft in meters

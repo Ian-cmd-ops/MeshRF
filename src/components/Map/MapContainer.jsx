@@ -5,6 +5,7 @@ import {
   ImageOverlay,
   Marker,
   Popup,
+  Tooltip,
   Polyline,
   Rectangle,
   ZoomControl,
@@ -30,24 +31,30 @@ import useSimulationStore from "../../store/useSimulationStore";
 // Refactored Sub-Components
 import LocateControl from "./Controls/LocateControl";
 import CoverageClickHandler from "./Controls/CoverageClickHandler";
+import ViewshedControl from "./Controls/ViewshedControl";
 import BatchNodesPanelWrapper from "./Controls/BatchNodesPanelWrapper";
 import MapToolbar from "./UI/MapToolbar";
 import GuidanceOverlays from "./UI/GuidanceOverlays";
 import SiteAnalysisPanel from "./UI/SiteAnalysisPanel";
 import SiteAnalysisResultsPanel from "./UI/SiteAnalysisResultsPanel";
+import OptimizationResultsPanel from "./OptimizationResultsPanel";
 
-// Fix for default marker icon issues in React Leaflet
-import icon from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
-
-let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
+// Custom SVG marker icon (inline - no loading delay)
+const customMarkerIcon = L.divIcon({
+  html: `
+    <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.4 12.5 28.5 12.5 28.5S25 20.9 25 12.5C25 5.6 19.4 0 12.5 0z" 
+            fill="#00f2ff" stroke="#0a0a0f" stroke-width="1"/>
+      <circle cx="12.5" cy="12.5" r="5" fill="#0a0a0f"/>
+    </svg>
+  `,
+  className: 'custom-marker-icon',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
+  popupAnchor: [0, -41]
 });
 
-L.Marker.prototype.options.icon = DefaultIcon;
+L.Marker.prototype.options.icon = customMarkerIcon;
 
 import { useMapEvents, useMap } from "react-leaflet";
 
@@ -143,16 +150,21 @@ const MapComponent = () => {
     rxHeight,
     fadeMargin,
     groundType,
-    climate
+    climate,
+    viewshedMaxDist,
+    setViewshedMaxDist,
+    nodeHeight
   } = useRF();
 
   // Wasm Viewshed Tool Hook
   const {
-    runAnalysis,
-    resultLayer,
-    isCalculating,
-    clear: clearViewshed,
-  } = useViewshedTool(toolMode === "viewshed");
+    runAnalysis: runViewshedAnalysis,
+    resultLayer: viewshedLayer,
+    isCalculating: isViewshedCalculating,
+    progress: viewshedProgress,
+    error: viewshedError,
+    clear: clearViewshed
+  } = useViewshedTool(toolMode === 'viewshed');
 
   // RF Coverage Tool Hook
   const {
@@ -361,16 +373,18 @@ const MapComponent = () => {
 
 
   // Viewshed Layer (Only active in 'viewshed' mode)
-  if (toolMode === "viewshed" && resultLayer && resultLayer.data) {
-    // resultLayer is now the single stitched viewshed (768x768 or similar)
-    const { width, height, data, bounds } = resultLayer;
+  if (toolMode === "viewshed" && viewshedLayer && viewshedLayer.data) {
+    // viewshedLayer is the single stitched viewshed from WASM worker
+    const { width, height, data, bounds } = viewshedLayer;
 
+    // Convert single-channel data to RGBA for BitmapLayer
+    // The WasmViewshedLayer shader will apply purple coloring
     const rgbaData = new Uint8ClampedArray(width * height * 4);
     for (let i = 0; i < width * height; i++) {
       const val = data[i];
-      rgbaData[i * 4] = val; // R
-      rgbaData[i * 4 + 1] = 0; // G
-      rgbaData[i * 4 + 2] = 0; // B
+      rgbaData[i * 4] = val;     // R channel contains visibility data
+      rgbaData[i * 4 + 1] = 0;   // G
+      rgbaData[i * 4 + 2] = 0;   // B  
       rgbaData[i * 4 + 3] = 255; // A
     }
     const imageData = new ImageData(rgbaData, width, height);
@@ -388,8 +402,8 @@ const MapComponent = () => {
 
   // Viewshed Bounding Box (Visual debugging)
   let viewshedBounds = null;
-  if (toolMode === "viewshed" && resultLayer && resultLayer.bounds) {
-    const { west, south, east, north } = resultLayer.bounds;
+  if (toolMode === "viewshed" && viewshedLayer && viewshedLayer.bounds) {
+    const { west, south, east, north } = viewshedLayer.bounds;
     viewshedBounds = [
       [north, west],
       [south, east],
@@ -496,7 +510,7 @@ const MapComponent = () => {
         <LocateControl />
         <CoverageClickHandler
           mode={toolMode}
-          runViewshed={runAnalysis}
+          runViewshed={runViewshedAnalysis}
           runRFCoverage={runRFAnalysis}
           setViewshedObserver={setViewshedObserver}
           setRfObserver={setRfObserver}
@@ -511,8 +525,8 @@ const MapComponent = () => {
             getAntennaHeightMeters,
             calculateSensitivity,
             rxHeight,
-            txLoss: cableLoss,
-            rxLoss: 0,
+            viewshedMaxDist,
+            cableLoss,
             rxAntennaGain: nodeConfigs.B.antennaGain,
             groundType,
             climate,
@@ -569,37 +583,12 @@ const MapComponent = () => {
             eventHandlers={{
               dragend: (e) => {
                 const { lat, lng } = e.target.getLatLng();
-                // Fetch Elevation again on drag end
-                fetch("/api/get-elevation", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ lat, lon: lng }),
-                })
-                  .then((res) => res.json())
-                  .then((data) => {
-                    console.log("Viewshed Debug - Fetched Elevation:", data);
-                    const elevation = data.elevation || 0;
-                    // Task 1.4: Use antenna height for viewshed observer from context if available, else 2.0
-                    const h = getAntennaHeightMeters ? getAntennaHeightMeters() : 2.0; 
-                    const newObserver = { lat, lng, height: h };
-                    console.log(
-                      "Viewshed Debug - Setting Observer:",
-                      newObserver,
-                    );
-                    setViewshedObserver(newObserver);
-
-                    // Trigger Recalculation
-                    runAnalysis(lat, lng, h, 25000);
-                  })
-                  .catch((err) => {
-                    console.error("Failed to fetch height", err);
-                    const h = getAntennaHeightMeters ? getAntennaHeightMeters() : 2.0;    
-                    setViewshedObserver({ lat, lng, height: h });
-                  });
+                setViewshedObserver({ lat, lng });
+                runViewshedAnalysis({ lat, lng }, viewshedMaxDist);
               },
             }}
           >
-            <Popup>Allowed Observer Location</Popup>
+            <Popup>Viewshed Transmitter</Popup>
           </Marker>
         )}
 
@@ -655,19 +644,20 @@ const MapComponent = () => {
           </Marker>
         )}
 
-        {/* Viewshed Bounds Rectangle */}
-        {viewshedBounds && (
-          <Rectangle
-            bounds={viewshedBounds}
-            pathOptions={{
-              color: "#a855f7",
-              dashArray: "10, 10",
-              fill: false,
-              fillOpacity: 0,
-              weight: 2,
+        {/* Viewshed Floating Control */}
+      {toolMode === 'viewshed' && (
+        <ViewshedControl 
+            maxDist={viewshedMaxDist} 
+            setMaxDist={setViewshedMaxDist}
+            isCalculating={isViewshedCalculating}
+            progress={viewshedProgress}
+            onRecalculate={() => {
+              if (viewshedObserver) {
+                runViewshedAnalysis(viewshedObserver, viewshedMaxDist);
+              }
             }}
-          />
-        )}
+        />
+      )}
 
         {/* RF Coverage Bounds Rectangle */}
         {rfBounds && (

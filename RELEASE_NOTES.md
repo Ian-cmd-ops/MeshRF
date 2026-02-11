@@ -1,35 +1,78 @@
-# Release v1.14.3: Neon Aesthetics & Backend Regression Fixes
+# Release v1.15.0: Viewshed Tool UX Overhaul
 
-This release focuses on verifying the stability of the Multi-Site Analysis tool and aligning its visual output with the application's "Classic Cyberpunk" aesthetic.
+This release delivers a comprehensive UX refresh for the Viewshed Analysis tool, including visual theming, performance improvements, and critical bug fixes.
 
-## 🎨 Aesthetics & Branding
+## ✨ Visual Enhancements
 
-- **Neon Cyan Coverage**: The Multi-Site coverage overlay now renders in glowing **Neon Cyan** (`#00f2ff`) with transparency, replacing the previous monotone texturing. This ensures the coverage map feels like an integrated part of the UI rather than a separate layer.
+### Purple Theming
 
-## 🐛 Bug Fixes
+The Viewshed tool now features consistent **purple branding** (`#a855f7`) throughout:
 
-- **Multi-Site Zero Coverage**: Fixed a critical backend regression where type mismatches (strings vs floats) caused the viewshed engine to return empty results for all sites.
-- **Frontend Crash**: Resolved an `Invalid LatLng` exception by ensuring the Python backend returns bounding boxes in the format expected by the React frontend (`{north, south, east, west}`).
-- **Invisible Overlay**: Fixed a rendering issue where the composite coverage map was calculated but never displayed on the canvas.
+- **Purple viewshed overlay** with transparency for better map readability
+- **Purple distance slider** with dynamic progress fill showing the selected range
+- **Purple "Recalculate Viewshed" button** with smooth hover effects
+
+### Custom SVG Markers
+
+- Replaced PNG marker icons with **inline SVG** for **instant rendering** (zero loading delay)
+- Markers feature branded **cyan color** (`#00f2ff`) with drop shadows for visual depth
+- No more waiting for marker assets to load when placing points
+
+### Dark Glassmorphism Theme
+
+All Leaflet UI elements now use custom **dark glassmorphism** styling:
+
+- **Popups and tooltips** with dark background (`rgba(10, 10, 18, 0.95)`)
+- **Neon cyan borders** and subtle glow effects
+- **Backdrop blur** for a modern, professional aesthetic
+- Fully integrated with the application's cyberpunk design language
+
+### Improved Animations
+
+- **Guidance overlays** now use `slideUp` animation (0.3s ease-out) instead of `fadeIn`
+- More contextually appropriate for bottom-anchored floating panels
+- Smoother, more polished user experience
+
+## 🐛 Critical Bug Fixes
+
+### Recalculate Button
+
+Fixed a critical bug where the "Recalculate Viewshed" button was completely non-functional:
+
+- **Root cause**: Function signature mismatch in `runViewshedAnalysis`
+- **Solution**: Updated function to accept both object pattern `({lat, lng}, maxDist)` and individual pattern `(lat, lng, height, maxDist)`
+- Users can now adjust the distance slider and click "Recalculate" to update the viewshed overlay
+
+### Marker Drag Behavior
+
+- Corrected the viewshed marker's `dragend` event handler
+- Now properly triggers new analysis when markers are moved
+- Parameters are passed correctly to the analysis engine
+
+### Click-Through Issue
+
+- Fixed pointer-events on the ViewshedControl floating panel
+- Map interactions (pan, zoom, click) now work properly even when the panel is visible
+
+### Module Import Warning
+
+- Resolved ES6 module import order warning in `useViewshedTool.js`
+- All imports are now at the top of the file per JavaScript module standards
+
+## ⚙️ Configuration Updates
+
+- **Default Antenna Height**: Increased from 5 meters to **9.144 meters (30 feet)** for more realistic baseline scenarios
+
+## 🧹 Code Cleanup
+
+- Removed redundant "Viewshed Observer" tooltip (was redundant with popup)
+- Cleaned up all debug console logs added during troubleshooting
+- Improved code organization and readability
 
 ---
 
-# Release v1.14.2: UI Polish & Documentation Sync
+## Developer Notes
 
-This release fixes a persistent issue where a purple background box could still appear during Multi-Site Analysis and updates the project documentation to mirror the recent mesh planning advancements.
+This release focused on polish and bug fixes for the Viewshed tool. The custom SVG markers and dark theme styling apply globally to all map markers and Leaflet UI components, improving consistency across the entire application.
 
-## Bug Fixes
-
-- **Final UI Cleanup**: Fixed a condition where the viewshed's purple "shadow" overlay would persist on the map during optimization scans. Map readability is now fully restored.
-
-## Documentation Updates
-
-- **README Sync**: The main project documentation now fully reflects the v1.14 features:
-  - Inter-Node Link Matrix details.
-  - Marginal Coverage analysis metrics.
-  - Mesh Topology and connectivity scoring.
-  - Updated propagation model guidance.
-
----
-
-_For the major mesh planning features introduced in v1.14.0, please refer to the corresponding release notes._
+The function signature fix for `runViewshedAnalysis` ensures compatibility with multiple calling patterns, making the API more flexible for future enhancements.

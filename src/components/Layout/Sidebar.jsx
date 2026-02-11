@@ -621,30 +621,6 @@ const Sidebar = () => {
                  </div>
              </div>
 
-             {/* Max Distance Slider (Viewshed/RF Only) */}
-             {(toolMode === 'viewshed' || toolMode === 'rf_coverage') && (
-                 <div>
-                     <label style={{fontSize: '0.75em', color: '#888', display: 'block', marginBottom: '4px'}} htmlFor="max-dist">
-                         Max Distance ({units === 'imperial' ? 'mi' : 'km'})
-                     </label>
-                     <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                         <input 
-                            type="range" 
-                            min="1000" max="100000" step="1000"
-                            id="max-dist"
-                            name="max-dist"
-                            value={viewshedMaxDist}
-                            onChange={(e) => setViewshedMaxDist(Number(e.target.value))}
-                            style={{ 
-                                '--range-progress': `${((viewshedMaxDist - 1000) / 99000) * 100}%` 
-                            }}
-                         />
-                         <span style={{fontSize: '0.9em', color: '#fff', width: '32px', textAlign: 'right', fontWeight: 'bold'}}>
-                             {units === 'imperial' ? (viewshedMaxDist / 1609.34).toFixed(1) : (viewshedMaxDist / 1000).toFixed(0)}
-                         </span>
-                     </div>
-                 </div>
-             )}
         </div>
       </CollapsibleSection>
 

@@ -417,7 +417,8 @@ const OptimizationLayer = ({ active, setActive, onStateUpdate, weights }) => {
             {/* Results Panel */}
             {showResults && ghostNodes.length > 0 && (
                 <OptimizationResultsPanel 
-                    results={ghostNodes} 
+                    results={ghostNodes}
+                    weights={weights}
                     onClose={() => setShowResults(false)}
                     onCenter={(node) => {
                         if (map) map.flyTo([node.lat, node.lon], 16, { duration: 1.5 });

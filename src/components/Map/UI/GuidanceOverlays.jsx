@@ -36,7 +36,7 @@ const GuidanceOverlays = ({
         flexDirection: 'column',
         alignItems: 'center',
         gap: '4px',
-        animation: 'fadeIn 0.5s ease-out',
+        animation: 'slideUp 0.3s ease-out',
         minWidth: '280px',
         maxWidth: '90vw'
     };
@@ -244,7 +244,7 @@ const GuidanceOverlays = ({
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '4px',
-                animation: 'fadeIn 0.5s ease-out',
+                animation: 'slideUp 0.3s ease-out',
                 minWidth: '280px',
                 maxWidth: '90vw'
             }}>

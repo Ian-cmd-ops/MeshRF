@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-02-10
+
+### Added
+
+- **Custom SVG Map Markers**: Replaced PNG marker icons with inline SVG for instant rendering with zero loading delay. Markers now feature the branded cyan color (`#00f2ff`) with drop shadows for visual depth.
+- **Dark Glassmorphism UI Theme**: All Leaflet popups and tooltips now use custom dark glassmorphism styling with neon cyan borders and glow effects, consistent with the application's cyberpunk aesthetic.
+
+### Changed
+
+- **Viewshed Tool Theming**: Complete visual overhaul with consistent purple branding (`#a855f7`):
+  - Purple viewshed overlay with transparency
+  - Purple-themed distance slider with dynamic progress fill
+  - Purple "Recalculate Viewshed" button with hover effects
+- **Guidance Overlay Animations**: Replaced `fadeIn` animation with `slideUp` animation (0.3s ease-out) for bottom-anchored guidance overlays, providing more contextually appropriate entrance effects.
+- **Default Antenna Height**: Updated default antenna height from 5 meters to 9.144 meters (30 feet) for more realistic baseline scenarios.
+
+### Fixed
+
+- **Recalculate Viewshed Button**: Fixed critical bug where the "Recalculate Viewshed" button was non-functional due to function signature mismatch. The `runViewshedAnalysis` function now correctly accepts both object pattern `({lat, lng}, maxDist)` and individual pattern `(lat, lng, height, maxDist)`.
+- **Marker Drag Behavior**: Corrected the viewshed marker's `dragend` event handler to properly call analysis with the correct parameters.
+- **Module Import Order**: Fixed ES6 module import warning by moving all imports to the top of `useViewshedTool.js`.
+- **Click-Through Issue**: Resolved pointer-events issue with the ViewshedControl floating panel that was preventing map interactions.
+
+### Removed
+
+- **Redundant Tooltip**: Removed the permanent "Viewshed Observer" tooltip from the viewshed marker as it was redundant with the popup.
+- **Debug Logging**: Cleaned up all debug console logs added during troubleshooting.
+
+## [1.14.4] - 2026-02-10
+
+### Fixed
+
+- **Viewshed Clipping**: Resolved an issue where viewshed calculations were artificially clipped in the East-West direction at higher latitudes due to incorrect longitude degree conversion. The engine now uses latitude-aware scaling and supports larger grid sizes (up to 4096px).
+
 ## [1.14.3] - 2026-02-10
 
 ### Fixed

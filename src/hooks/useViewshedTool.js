@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { stitchElevationGrids, transformObserverCoords, calculateStitchedBounds } from '../utils/tileStitcher';
 
 
 // Initialize Worker
@@ -15,18 +16,16 @@ worker.onmessage = (e) => {
         globalWorkerReady = true;
         statusListeners.forEach(listener => listener(true));
         statusListeners.clear();
-
     }
 };
 
 // Initial query in case it's already running
 worker.postMessage({ type: 'QUERY_INIT_STATUS' });
 
-import { stitchElevationGrids, transformObserverCoords, calculateStitchedBounds } from '../utils/tileStitcher';
-
 export function useViewshedTool(active) {
     const [resultLayer, setResultLayer] = useState(null); // { data, width, height, bounds }
     const [isCalculating, setIsCalculating] = useState(false);
+    const [progress, setProgress] = useState(0);
     const [error, setError] = useState(null);
     const [_ready, setReady] = useState(globalWorkerReady);
 
@@ -125,27 +124,37 @@ export function useViewshedTool(active) {
         };
     };
     
-    // Helper: Get adjacent 3x3 tiles
-    const getAdjacentTiles = (centerTile) => {
-      const offsets = [
-        [-1, -1], [0, -1], [1, -1],
-        [-1,  0], [0,  0], [1,  0],
-        [-1,  1], [0,  1], [1,  1]
-      ];
-      // Max tile index for zoom
-      const maxTile = Math.pow(2, centerTile.z) - 1;
+    // Helper: Get Tiles covering a radius
+    const getNecessaryTiles = (centerTile, lat, radiusMeters) => {
+      // Calculate tile width in meters at this latitude/zoom
+      // Earth circum = 40075017 m
+      // Tile width = (cos(lat) * circum) / 2^zoom
+      const earthCircum = 40075017;
+      const latRad = lat * Math.PI / 180;
+      const tileWidthMeters = (Math.cos(latRad) * earthCircum) / Math.pow(2, centerTile.z);
       
-      return offsets.map(([dx, dy]) => {
-          const x = centerTile.x + dx;
-          const y = centerTile.y + dy;
-          // Validate world bounds
-          if (y < 0 || y > maxTile) return null; // Y bounds hard
-           let wrappedX = x;
-           if (x < 0) wrappedX = maxTile + x + 1;
-           if (x > maxTile) wrappedX = x - maxTile - 1;
-           
-           return { x: wrappedX, y, z: centerTile.z };
-      }).filter(t => t !== null);
+      // Radius in tiles (ceil to ensure coverage)
+      // Add 1 tile buffer for safety
+      const radiusTiles = Math.ceil(radiusMeters / tileWidthMeters) + 1;
+      
+      const tiles = [];
+      const maxTile = Math.pow(2, centerTile.z) - 1;
+
+      for (let dx = -radiusTiles; dx <= radiusTiles; dx++) {
+          for (let dy = -radiusTiles; dy <= radiusTiles; dy++) {
+              const x = centerTile.x + dx;
+              const y = centerTile.y + dy;
+              
+              if (y < 0 || y > maxTile) continue; // Skip vertical out of bounds
+              
+              let wrappedX = x;
+              if (x < 0) wrappedX = maxTile + x + 1;
+              if (x > maxTile) wrappedX = x - maxTile - 1;
+              
+              tiles.push({ x: wrappedX, y, z: centerTile.z });
+          }
+      }
+      return tiles;
     };
 
     const fetchAndDecodeTile = async (tile) => {
@@ -189,10 +198,26 @@ export function useViewshedTool(active) {
         }
     };
 
-    const runAnalysis = useCallback(async (lat, lon, height = 2.0, maxDist = 3000) => {
+    const runAnalysis = useCallback(async (latOrObserver, lonOrMaxDist, height = 2.0, maxDist = 3000) => {
+        // Handle both calling patterns:
+        // 1. runAnalysis({lat, lng}, maxDist) - object pattern
+        // 2. runAnalysis(lat, lng, height, maxDist) - individual pattern
+        let lat, lon, actualMaxDist;
+        
+        if (typeof latOrObserver === 'object' && latOrObserver.lat !== undefined) {
+            // Object pattern: first arg is {lat, lng}, second is maxDist
+            lat = latOrObserver.lat;
+            lon = latOrObserver.lng;
+            actualMaxDist = lonOrMaxDist || maxDist;
+        } else {
+            // Individual pattern: (lat, lon, height, maxDist)
+            lat = latOrObserver;
+            lon = lonOrMaxDist;
+            actualMaxDist = maxDist;
+        }
+        
         // Wait for worker to initialize if needed
         if (!globalWorkerReady) {
-            console.log("Worker not ready, waiting...");
             let attempts = 0;
             while (!globalWorkerReady && attempts < 20) {
                 await new Promise(r => setTimeout(r, 200));
@@ -217,7 +242,7 @@ export function useViewshedTool(active) {
             // Safety: Check if Context Lost (if using WebGL in future, but good practice)
             // Safety: Check if buffer is already detached
             
-            const zoom = maxDist > 8000 ? 10 : 12; 
+            const zoom = actualMaxDist > 8000 ? 10 : 12; 
             const centerTile = getTile(lat, lon, zoom);
 
             // Calculate GSD (Ground Sampling Distance) for the analysis
@@ -225,11 +250,20 @@ export function useViewshedTool(active) {
             const gsd_meters = (2 * Math.PI * 6378137 * Math.cos(latRad)) / (256 * Math.pow(2, zoom));
             
             // 1. Get Tiles
-            const targetTiles = getAdjacentTiles(centerTile);
-
+            const targetTiles = getNecessaryTiles(centerTile, lat, actualMaxDist);
             
-            // 2. Fetch all in parallel
-            const loadedTiles = await Promise.all(targetTiles.map(fetchAndDecodeTile));
+            // 2. Fetch all in parallel with progress
+            let completed = 0;
+            const total = targetTiles.length;
+            setProgress(10); // Start
+            
+            const loadedTiles = await Promise.all(targetTiles.map(async (tile) => {
+                const result = await fetchAndDecodeTile(tile);
+                completed++;
+                setProgress(10 + Math.floor((completed / total) * 80)); // 10% -> 90%
+                return result;
+            }));
+            
             const validTiles = loadedTiles.filter(t => t !== null);
             
             if (validTiles.length === 0) {
@@ -237,6 +271,8 @@ export function useViewshedTool(active) {
                 setIsCalculating(false);
                 return;
             }
+            
+            setProgress(95); // Stitching...
             
             // 3. Stitch Tiles
             const stitched = stitchElevationGrids(validTiles, centerTile, 256);
@@ -291,5 +327,5 @@ export function useViewshedTool(active) {
         setError(null);
     }, []);
 
-    return { runAnalysis, resultLayer, isCalculating, error, clear };
+    return { runAnalysis, resultLayer, isCalculating, progress, error, clear };
 }
