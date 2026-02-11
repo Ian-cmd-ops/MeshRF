@@ -38,9 +38,9 @@ EMSCRIPTEN_BINDINGS(meshrf_module) {
     }));
 
     // Simple Viewshed (Line-of-Sight)
-    function("calculate_viewshed", optional_override([](uintptr_t elev_ptr, int width, int height, int tx_x, int tx_y, float tx_h, int max_dist) {
+    function("calculate_viewshed", optional_override([](uintptr_t elev_ptr, int width, int height, int tx_x, int tx_y, float tx_h, int max_dist, float gsd_meters) {
         float* elev = reinterpret_cast<float*>(elev_ptr);
-        return calculate_viewshed(elev, width, height, tx_x, tx_y, tx_h, max_dist);
+        return calculate_viewshed(elev, width, height, tx_x, tx_y, tx_h, max_dist, gsd_meters);
     }));
     
     // RF Coverage (ITM-based propagation)

@@ -15,7 +15,7 @@ interface MeshRFModule {
     
     // Bindings
     calculate_itm(profile_ptr: number, count: number, params: any): any; // Returns VectorFloat (needs .size(), .get())
-    calculate_viewshed(elev_ptr: number, width: number, height: number, tx_x: number, tx_y: number, tx_h: number, max_dist: number): any; // Returns VectorUint8
+    calculate_viewshed(elev_ptr: number, width: number, height: number, tx_x: number, tx_y: number, tx_h: number, max_dist: number, gsd_meters: number): any; // Returns VectorUint8
     optimize_site_selection(matrix_ptr: number, num_candidates: number, num_targets: number): any; // Returns VectorInt
     
     LinkParameters: any;
@@ -108,7 +108,7 @@ function handleITM(id: string, payload: any) {
 function handleViewshed(id: string, payload: any) {
     if (!module) return;
 
-    const { elevation, width, height, tx_x, tx_y, tx_h, max_dist } = payload;
+    const { elevation, width, height, tx_x, tx_y, tx_h, max_dist, gsd_meters } = payload;
     
     // elevation is Float32Array
     const byteSize = elevation.length * 4;
@@ -119,8 +119,8 @@ function handleViewshed(id: string, payload: any) {
         // console.log(`[Worker] Setting HEAPF32 data`);
         module.HEAPF32.set(elevation, ptr / 4);
 
-        // console.log(`[Worker] Calling C++ calculate_viewshed with w=${width}, h=${height}, tx=(${tx_x},${tx_y}), dist=${max_dist}`);
-        const resultVec = module.calculate_viewshed(ptr, width, height, tx_x, tx_y, tx_h, max_dist);
+        // console.log(`[Worker] Calling C++ calculate_viewshed with w=${width}, h=${height}, tx=(${tx_x},${tx_y}), dist=${max_dist}, gsd=${gsd_meters}`);
+        const resultVec = module.calculate_viewshed(ptr, width, height, tx_x, tx_y, tx_h, max_dist, gsd_meters);
         // console.log(`[Worker] C++ returned resultVec. Size: ${resultVec.size()}`);
         
         const size = resultVec.size();

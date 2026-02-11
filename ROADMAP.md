@@ -107,11 +107,13 @@ The ITM supports time/location/situation variability percentages (currently fixe
 
 ---
 
-## Phase 5: Elevation Scan & RF Engine Upgrades
+### High Priority Bugs (Immediate)
+
+- [x] **Viewshed Shadow Regression**: Purple shadows are not rendering correctly in `WasmViewshedLayer`. Fixed in v1.14.2 via explicit shader state management.
+
+## Current Focus: Elevation Scan & Coverage Analysis (v1.14.x)
 
 ### Global Improvements (All Tools)
-
-_Features that benefit Site Finder, Batch Processing, and Link Analysis._
 
 #### P5-1: True LOS Viewshed (Completed)
 
@@ -137,10 +139,10 @@ _Features that benefit Site Finder, Batch Processing, and Link Analysis._
 
 ### Tool-Specific: Site Manager (Manual Mode)
 
-#### P5-5: True Marginal Gain Optimization
+#### P5-5: True Marginal Gain Optimization (Completed)
 
-**Problem:** Greedy algorithm selects overlapping sites.
-**Solution:** Use set-union logic to select sites that add the most _unique_ coverage.
+**Status:** ✅ Implemented in v1.14.0/1.14.3.
+**Features:** Multi-Site Analysis now computes unique coverage per site and marginal gain contribution.
 
 #### P5-6: Pareto Frontier Analysis
 

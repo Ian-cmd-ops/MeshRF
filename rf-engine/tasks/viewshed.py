@@ -36,10 +36,10 @@ def calculate_batch_viewshed(self, params):
     
     nodes_data = params.get('nodes', [])
     options = params.get('options', {})
-    radius = options.get('radius', 5000)
+    radius = float(options.get('radius', 5000))
     optimize_n = options.get('optimize_n')
-    rx_height = options.get('rx_height', 2.0)
-    freq = options.get('frequency_mhz', 915.0)
+    rx_height = float(options.get('rx_height', 2.0))
+    freq = float(options.get('frequency_mhz', 915.0))
     
     # 1. Determine Bounding Box for Composite
     if not nodes_data:
@@ -49,10 +49,10 @@ def calculate_batch_viewshed(self, params):
     # 1 deg lat = 111,320m
     buffer_deg = (radius + 1000) / 111320.0 
     
-    min_lat = min(n['lat'] for n in nodes_data) - buffer_deg
-    max_lat = max(n['lat'] for n in nodes_data) + buffer_deg
-    min_lon = min(n['lon'] for n in nodes_data) - buffer_deg
-    max_lon = max(n['lon'] for n in nodes_data) + buffer_deg
+    min_lat = min(float(n['lat']) for n in nodes_data) - buffer_deg
+    max_lat = max(float(n['lat']) for n in nodes_data) + buffer_deg
+    min_lon = min(float(n['lon']) for n in nodes_data) - buffer_deg
+    max_lon = max(float(n['lon']) for n in nodes_data) + buffer_deg
     
     # Define Global Master Grid (e.g. 100m resolution)
     res_m = 100
@@ -78,9 +78,9 @@ def calculate_batch_viewshed(self, params):
     total = len(nodes_data)
     for i, node_data in enumerate(nodes_data):
         try:
-            lat = node_data.get('lat')
-            lon = node_data.get('lon')
-            height = node_data.get('height', 10)
+            lat = float(node_data.get('lat'))
+            lon = float(node_data.get('lon'))
+            height = float(node_data.get('height', 10))
             
             # Simple viewshed
             grid, grid_lats, grid_lons = calculate_viewshed(
@@ -123,25 +123,33 @@ def calculate_batch_viewshed(self, params):
             lats = res['grid_lats']
             lons = res['grid_lons']
             
-            # Optimization: Vectorize or iterate fast
-            # Since grids are small (local viewshed), iteration is okay-ish
-            # But let's try to be efficient.
-            # Grid indices to lat/lon -> master y/x
-            
+            # Optimization: Vectorized coordinate mapping
             # Get indices where grid > 0
-            visible_indices = np.argwhere(g > 0)
+            rows_idx, cols_idx = np.nonzero(g > 0)
             
-            for r, c in visible_indices:
-                # Map local grid lat/lon to master grid y/x
-                # Note: lat/lon arrays in res might be 1D 
-                pixel_lat = lats[r]
-                pixel_lon = lons[c]
+            if len(rows_idx) > 0:
+                # Vectorized lookup of lat/lon
+                pixel_lats = lats[rows_idx]
+                pixel_lons = lons[cols_idx]
                 
-                y = lat_to_y(pixel_lat)
-                x = lon_to_x(pixel_lon)
+                # Vectorized mapping to master grid coordinates
+                # y = int((max_lat - lat) / (max_lat - min_lat) * (rows - 1))
+                y_vals = ((max_lat - pixel_lats) / (max_lat - min_lat) * (rows - 1)).astype(int)
                 
-                if 0 <= y < rows and 0 <= x < cols:
-                    pixels.add((y, x))
+                # x = int((lon - min_lon) / (max_lon - min_lon) * (cols - 1))
+                x_vals = ((pixel_lons - min_lon) / (max_lon - min_lon) * (cols - 1)).astype(int)
+                
+                # Filter valid
+                valid_mask = (y_vals >= 0) & (y_vals < rows) & (x_vals >= 0) & (x_vals < cols)
+                y_vals = y_vals[valid_mask]
+                x_vals = x_vals[valid_mask]
+                
+                # Convert to set of tuples
+                # Creating a set of tuples from 2D array is still somewhat costly but faster than pure Python loop
+                if len(y_vals) > 0:
+                    coords = np.column_stack((y_vals, x_vals))
+                    # Use a set comprehension or map for speed
+                    pixels = set(map(tuple, coords))
             
             candidate_sets.append(pixels)
 
@@ -177,13 +185,22 @@ def calculate_batch_viewshed(self, params):
         g = res['grid']
         lats_g = res['grid_lats']
         lons_g = res['grid_lons']
-        visible_indices = np.argwhere(g > 0)
+        rows_idx, cols_idx = np.nonzero(g > 0)
         node_pixels = set()
-        for r, c in visible_indices:
-            y = lat_to_y(lats_g[r])
-            x = lon_to_x(lons_g[c])
-            if 0 <= y < rows and 0 <= x < cols:
-                node_pixels.add((y, x))
+        if len(rows_idx) > 0:
+            pixel_lats = lats_g[rows_idx]
+            pixel_lons = lons_g[cols_idx]
+            
+            y_vals = ((max_lat - pixel_lats) / (max_lat - min_lat) * (rows - 1)).astype(int)
+            x_vals = ((pixel_lons - min_lon) / (max_lon - min_lon) * (cols - 1)).astype(int)
+            
+            valid_mask = (y_vals >= 0) & (y_vals < rows) & (x_vals >= 0) & (x_vals < cols)
+            y_vals = y_vals[valid_mask]
+            x_vals = x_vals[valid_mask]
+            
+            if len(y_vals) > 0:
+                coords = np.column_stack((y_vals, x_vals))
+                node_pixels = set(map(tuple, coords))
         marginal_pixels = len(node_pixels - covered_so_far)
         covered_so_far.update(node_pixels)
         res['marginal_coverage_km2'] = round((marginal_pixels * (res_m * res_m)) / 1_000_000.0, 2)
@@ -255,16 +272,43 @@ def calculate_batch_viewshed(self, params):
         lats = res['grid_lats']
         lons = res['grid_lons']
         
-        for r in range(g.shape[0]):
-            for c in range(g.shape[1]):
-                if g[r, c] > 0:
-                    y = lat_to_y(lats[r])
-                    x = lon_to_x(lons[c])
-                    if 0 <= y < rows and 0 <= x < cols:
-                        master_grid[y, x] = 255 # Visible
+        # Vectorized Blit
+        rows_idx, cols_idx = np.nonzero(g > 0)
+        if len(rows_idx) > 0:
+            pixel_lats = lats[rows_idx]
+            pixel_lons = lons[cols_idx]
+            
+            y_vals = ((max_lat - pixel_lats) / (max_lat - min_lat) * (rows - 1)).astype(int)
+            x_vals = ((pixel_lons - min_lon) / (max_lon - min_lon) * (cols - 1)).astype(int)
+            
+            valid_mask = (y_vals >= 0) & (y_vals < rows) & (x_vals >= 0) & (x_vals < cols)
+            y_vals = y_vals[valid_mask]
+            x_vals = x_vals[valid_mask]
+            
+            if len(y_vals) > 0:
+                # Numpy advanced indexing for fast update
+                master_grid[y_vals, x_vals] = 255 # Visible
                         
-    # 4. Generate PNG Base64
-    img = Image.fromarray(master_grid, mode='L')
+    # 4. Generate PNG Base64 (Neon Cyan RGBA)
+    # Create RGBA array
+    # rows, cols from master_grid.shape
+    height, width = master_grid.shape
+    rgba_grid = np.zeros((height, width, 4), dtype=np.uint8)
+    
+    # Define Neon Cyan: #00f2ff -> (0, 242, 255)
+    cyan_r, cyan_g, cyan_b = 0, 242, 255
+    opacity = 150 # ~60%
+    
+    # Mask for visible pixels
+    visible_mask = master_grid > 0
+    
+    # Apply colors where visible
+    rgba_grid[visible_mask, 0] = cyan_r
+    rgba_grid[visible_mask, 1] = cyan_g
+    rgba_grid[visible_mask, 2] = cyan_b
+    rgba_grid[visible_mask, 3] = opacity
+    
+    img = Image.fromarray(rgba_grid, mode='RGBA')
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -297,8 +341,13 @@ def calculate_batch_viewshed(self, params):
         "inter_node_links": inter_node_links,
         "total_unique_coverage_km2": total_unique_km2,
         "composite": {
-            "image": f"data:image/png;base64,{img_str}",
-            "bounds": [min_lat, min_lon, max_lat, max_lon]
+            "image": img_str,
+            "bounds": {
+                "north": max_lat,
+                "south": min_lat,
+                "east": max_lon,
+                "west": min_lon
+            }
         }
     }
 

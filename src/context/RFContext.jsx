@@ -137,6 +137,9 @@ export const RFProvider = ({ children }) => {
   const [clutterHeight, setClutterHeight] = useState(0); // Forest/Urban Obstruction (m)
   const [rxHeight, setRxHeight] = useState(2.0); // Receiver Height (m), default 2m (Handheld)
   const [fadeMargin, setFadeMargin] = useState(10); // Fade Margin (dB), default 10dB
+  
+  // Viewshed Params
+  const [viewshedMaxDist, setViewshedMaxDist] = useState(25000); // Max Distance (m), default 25km
 
   // Signals
   const [recalcTimestamp, setRecalcTimestamp] = useState(0);
@@ -272,6 +275,10 @@ export const RFProvider = ({ children }) => {
     setRxHeight,
     fadeMargin,
     setFadeMargin,
+    
+    // Viewshed
+    viewshedMaxDist,
+    setViewshedMaxDist,
 
     // Batch
     batchNodes,

@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import heapq
+import rf_physics
 from rf_physics import haversine_distance, calculate_path_loss
 
 def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, rx_h=2.0, freq_mhz=915.0, resolution_m=30, model='bullington'):
@@ -20,7 +21,12 @@ def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, rx_h=2.0, f
     
     # 2. Define Grid Resolution
     # Use coarse grid for performance (e.g. 100m)
-    eff_res_m = max(resolution_m, 100)
+    if resolution_m < 100:
+        # TODO: Add proper logger
+        # logger.warning(f"resolution_m={resolution_m} is below minimum 100m; using 100m for performance.")
+        print(f"WARNING: resolution_m={resolution_m} is below minimum 100m; using 100m for performance.")
+        resolution_m = 100
+    eff_res_m = resolution_m
     
     rows = int((max_lat - min_lat) / (eff_res_m * lat_deg_per_m))
     cols = int((max_lon - min_lon) / (eff_res_m * lon_deg_per_m))
@@ -103,7 +109,7 @@ def greedy_coverage(tile_manager, candidates, n_select, radius_m=5000, rx_h=2.0,
         viewsheds.append(covered_points)
         
     # Greedy Selection
-    for _ in range(num_nodes):
+    for _ in range(n_select):
         best_idx = -1
         best_gain = 0
         

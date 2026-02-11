@@ -3,19 +3,19 @@ import { RADIO_PRESETS, DEVICE_PRESETS, ANTENNA_PRESETS, CABLE_TYPES } from '../
 import { useRF, GROUND_TYPES, CLIMATE_ZONES } from '../../context/RFContext';
 import BatchProcessing from '../Map/BatchProcessing';
 
-const CollapsibleSection = ({ title, isOpen, onToggle, children, isShared = false, isITM = false, alwaysVisible = null }) => (
+const CollapsibleSection = ({ title, isOpen, onToggle, children, isShared = false, isITM = false, alwaysVisible = null, collapsible = true }) => (
     <div style={{
         marginBottom: 'var(--spacing-xs)', // Reduced from md to bring next section closer
         borderBottom: '1px solid var(--color-border)',
-        paddingBottom: isOpen ? 'var(--spacing-sm)' : '4px' 
+        paddingBottom: (isOpen || !collapsible) ? 'var(--spacing-sm)' : '4px' 
     }}>
         <h3 
-            onClick={onToggle}
+            onClick={collapsible ? onToggle : undefined}
             style={{
                 fontSize: '1rem', 
                 color: '#fff', 
                 margin: '0 0 var(--spacing-sm) 0',
-                cursor: 'pointer',
+                cursor: collapsible ? 'pointer' : 'default',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -27,27 +27,29 @@ const CollapsibleSection = ({ title, isOpen, onToggle, children, isShared = fals
                 {isShared && <span style={{fontSize: '0.8em', color: '#888', fontWeight: 'normal', marginLeft: '6px'}}>(Shared)</span>}
                 {isITM && <span style={{fontSize: '0.8em', color: '#888', fontWeight: 'normal', marginLeft: '6px'}}>(ITM)</span>}
             </div>
-            <span style={{fontSize: '0.8em', color: '#888', display: 'flex', alignItems: 'center'}}>
-                {isOpen ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 18l6-6-6-6"/>
-                    </svg>
-                )}
-            </span>
+            {collapsible && (
+                <span style={{fontSize: '0.8em', color: '#888', display: 'flex', alignItems: 'center'}}>
+                    {isOpen ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 9l6 6 6-6"/>
+                        </svg>
+                    ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
+                    )}
+                </span>
+            )}
         </h3>
         
         {alwaysVisible && (
-            <div style={{ marginBottom: isOpen ? '12px' : '8px' }}> {/* Added margin when closed */}
+            <div style={{ marginBottom: (isOpen || !collapsible) ? '12px' : '8px' }}> {/* Added margin when closed */}
                 {alwaysVisible}
             </div>
         )}
 
-        {isOpen && (
-            <div style={{ animation: 'fadeIn 0.2s ease-in-out' }}>
+        {(isOpen || !collapsible) && (
+            <div style={{ animation: 'fadeOnly 0.2s ease-in-out' }}>
                 {children}
             </div>
         )}
@@ -83,7 +85,8 @@ const Sidebar = () => {
         isMobile,
         groundType, setGroundType,
         climate, setClimate,
-        fadeMargin, setFadeMargin
+        fadeMargin, setFadeMargin,
+        viewshedMaxDist, setViewshedMaxDist
     } = useRF();
 
 
@@ -299,6 +302,7 @@ const Sidebar = () => {
       <CollapsibleSection 
           title={editMode === 'GLOBAL' ? 'Hardware Config' : 'Node Hardware'}
           isOpen={sections.hardware}
+          collapsible={false}
           onToggle={() => toggleSection('hardware')}
       >
         <div style={{ paddingLeft: editMode !== 'GLOBAL' ? '12px' : '0', borderLeft: editMode !== 'GLOBAL' ? `3px solid ${editMode === 'A' ? '#00ff41' : '#ff0000'}` : 'none' }}>
@@ -612,9 +616,35 @@ const Sidebar = () => {
                         onChange={(e) => setFadeMargin(Number(e.target.value))}
                         style={{ '--range-progress': `${(fadeMargin / 20) * 100}%` }}
                      />
+                     
                      <span style={{fontSize: '0.9em', color: '#fff', width: '24px', textAlign: 'right', fontWeight: 'bold'}}>{fadeMargin}</span>
                  </div>
              </div>
+
+             {/* Max Distance Slider (Viewshed/RF Only) */}
+             {(toolMode === 'viewshed' || toolMode === 'rf_coverage') && (
+                 <div>
+                     <label style={{fontSize: '0.75em', color: '#888', display: 'block', marginBottom: '4px'}} htmlFor="max-dist">
+                         Max Distance ({units === 'imperial' ? 'mi' : 'km'})
+                     </label>
+                     <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                         <input 
+                            type="range" 
+                            min="1000" max="100000" step="1000"
+                            id="max-dist"
+                            name="max-dist"
+                            value={viewshedMaxDist}
+                            onChange={(e) => setViewshedMaxDist(Number(e.target.value))}
+                            style={{ 
+                                '--range-progress': `${((viewshedMaxDist - 1000) / 99000) * 100}%` 
+                            }}
+                         />
+                         <span style={{fontSize: '0.9em', color: '#fff', width: '32px', textAlign: 'right', fontWeight: 'bold'}}>
+                             {units === 'imperial' ? (viewshedMaxDist / 1609.34).toFixed(1) : (viewshedMaxDist / 1000).toFixed(0)}
+                         </span>
+                     </div>
+                 </div>
+             )}
         </div>
       </CollapsibleSection>
 
@@ -730,7 +760,7 @@ const Sidebar = () => {
                 Settings
              </h3>
              
-             <div style={{ animation: 'fadeIn 0.2s ease-in-out' }}>
+             <div style={{ animation: 'fadeOnly 0.2s ease-in-out' }}>
              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
                  <label style={{color: '#aaa', fontSize: '0.9em'}}>Units</label>
                  <div style={{display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', overflow: 'hidden', border: '1px solid #444'}}>

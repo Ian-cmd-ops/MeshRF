@@ -214,8 +214,15 @@ export function useViewshedTool(active) {
         analysisIdRef.current = currentAnalysisId;
         
         try {
+            // Safety: Check if Context Lost (if using WebGL in future, but good practice)
+            // Safety: Check if buffer is already detached
+            
             const zoom = maxDist > 8000 ? 10 : 12; 
             const centerTile = getTile(lat, lon, zoom);
+
+            // Calculate GSD (Ground Sampling Distance) for the analysis
+            const latRad = lat * Math.PI / 180;
+            const gsd_meters = (2 * Math.PI * 6378137 * Math.cos(latRad)) / (256 * Math.pow(2, zoom));
             
             // 1. Get Tiles
             const targetTiles = getAdjacentTiles(centerTile);
@@ -250,7 +257,12 @@ export function useViewshedTool(active) {
                 bounds: bounds
             };
             
-            // 6. Dispatch Single Job to Worker
+            // 6. Safety Check before Transfer
+            if (stitched.data.byteLength === 0) {
+                throw new Error("Stitched elevation buffer is empty or already detached");
+            }
+
+            // 7. Dispatch Single Job to Worker
             worker.postMessage({
                 id: currentAnalysisId,
                 type: 'CALCULATE_VIEWSHED',
@@ -261,7 +273,8 @@ export function useViewshedTool(active) {
                     tx_x: observerCoords.x,
                     tx_y: observerCoords.y,
                     tx_h: height,
-                    max_dist: Math.floor(maxDist / 30.0)
+                    max_dist: Math.floor(maxDist / gsd_meters), // Use actual GSD for pixel distance
+                    gsd_meters: gsd_meters
                 }
             }, [stitched.data.buffer]); 
 

@@ -70,28 +70,33 @@ export function stitchElevationGrids(tiles, centerTile, tileSize = 256) {
 
 // Transforms observer lat/lon to pixel coordinates within the stitched grid
 export function transformObserverCoords(observerLat, observerLon, centerTile, stitchedWidth, stitchedHeight, tileSize = 256) {
-    // 1. Get bounds of the CENTER tile
-    const centerBounds = getTileBounds(centerTile.x, centerTile.y, centerTile.z);
+    // Use exact Web Mercator projection to find the observer's floating-point tile coordinates.
+    // This avoids errors from linear interpolation at high latitudes.
     
-    // 2. Determine pixels per degree (using the center tile as reference scale)
-    // Note: Mercator pixels are not perfectly linear, but within a tile it's close enough for 3x3
-    const latSpan = centerBounds.north - centerBounds.south;
-    const lonSpan = centerBounds.east - centerBounds.west;
+    const zoom = centerTile.z;
+    const n = Math.pow(2, zoom);
+    const d2r = Math.PI / 180;
     
-    const pixelsPerLon = tileSize / lonSpan;
-    const pixelsPerLat = tileSize / latSpan;
-
-    // 3. Calculate offset from Center Tile's North-West corner
-    const lonDelta = observerLon - centerBounds.west;
-    const latDelta = centerBounds.north - observerLat; // Latitude inverted (North is Up, Pixel 0 is Top)
-
-    const localX = lonDelta * pixelsPerLon;
-    const localY = latDelta * pixelsPerLat;
-
-    // 4. Add offset to move to the center of the stitched grid
-    // The center tile starts at (256, 256) in the 768x768 grid
-    const stitchedX = tileSize + localX;
-    const stitchedY = tileSize + localY;
+    // X: Longitude is linear
+    const observerTileX = n * ((observerLon + 180) / 360);
+    
+    // Y: Latitude is logarithmic (Web Mercator)
+    const latRad = observerLat * d2r;
+    const observerTileY = n * (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+    
+    // Calculate offset relative to the Center Tile's origin
+    // Center Tile X index: centerTile.x
+    // Center Tile Y index: centerTile.y
+    
+    const dx = observerTileX - centerTile.x;
+    const dy = observerTileY - centerTile.y;
+    
+    // In the stitched grid (3x3), the center tile starts at (tileSize, tileSize).
+    // So if dx=0, dy=0 (top-left of center tile), result is (256, 256).
+    // If dx=-1, dy=-1 (top-left of top-left tile), result is (0, 0).
+    
+    const stitchedX = (dx + 1) * tileSize;
+    const stitchedY = (dy + 1) * tileSize;
 
     return {
         x: Math.floor(stitchedX),

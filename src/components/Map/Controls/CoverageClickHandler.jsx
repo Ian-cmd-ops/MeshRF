@@ -10,13 +10,15 @@ const CoverageClickHandler = ({ mode, runViewshed, runRFCoverage, setViewshedObs
                 if (mode === 'viewshed') {
                     // Task 1.4: Use antenna height from context
                     const h = rfContext.getAntennaHeightMeters ? rfContext.getAntennaHeightMeters() : 2.0;
+                    const dist = rfContext.viewshedMaxDist || 25000;
                     setViewshedObserver({ lat, lng, height: h });
-                    // Run simple viewshed (25km radius)
-                    runViewshed(lat, lng, h, 25000);
+                    
+                    // Run viewshed with configured radius
+                    runViewshed(lat, lng, h, dist);
                 } else if (mode === 'rf_coverage') {
                     // Use helper to get height in meters (handling ft conversion)
                     const h = rfContext.getAntennaHeightMeters ? rfContext.getAntennaHeightMeters() : (rfContext.antennaHeight || 5.0);
-                    
+                    const dist = rfContext.viewshedMaxDist || 25000;
 
                     setRfObserver({ lat, lng, height: h }); // Store processed height in meters
 
@@ -42,7 +44,7 @@ const CoverageClickHandler = ({ mode, runViewshed, runRFCoverage, setViewshedObs
                     };
                     
 
-                    runRFCoverage(lat, lng, h, 25000, rfParams);
+                    runRFCoverage(lat, lng, h, dist, rfParams);
                 }
             }
         }

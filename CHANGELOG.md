@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.3] - 2026-02-10
+
+### Fixed
+
+- **Multi-Site Coverage Regression**: Fixed a backend type-casting issue that caused the multi-site analysis to return 0 area coverage for all nodes.
+- **Frontend Crash**: Resolved an `Invalid LatLng` error by correcting the backend's bounding box response format to match frontend expectations.
+- **Missing Visualization**: Restored the Multi-Site coverage map overlay which was failing to render.
+
+### Changed
+
+- **Neon Theme Integration**: Updated the Multi-Site coverage overlay to generate in **Neon Cyan** (`#00f2ff`) with transparency, replacing the previous grayscale output to align with the application's cyberpunk aesthetic.
+
 ## [1.14.2] - 2026-02-10
 
 ### Fixed

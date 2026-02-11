@@ -24,16 +24,9 @@ void cast_ray(
     int x0, int y0, // TX
     int x1, int y1, // Target
     float tx_elev_amsl,
-    float meter_per_pixel // simplified assumption or param? 
-                          // Prompt didn't distinguish pixel/meter for curvature!
-                          // We MUST assume a scale or just ignore curvature if not provided?
-                          // "correction factor for Earth's curvature (default k=1.33)"
-                          // We need pixel resolution (GSD). 
-                          // Assuming standard SRTM 30m for now if not passed?
-                          // Let's use 30.0f as default hardcoded or add to logic?
-                          // Prompt didn't pass GSD. I will assume 30m.
+    float meter_per_pixel
 ) {
-    const float GSD = 30.0f; 
+    const float GSD = meter_per_pixel; 
 
     int dx = abs(x1 - x0);
     int dy = abs(y1 - y0);
@@ -103,7 +96,8 @@ std::vector<uint8_t> calculate_viewshed(
     int tx_x, 
     int tx_y, 
     float tx_h_meters, 
-    int max_dist_pixels
+    int max_dist_pixels,
+    float gsd_meters
 ) {
     // 1. Allocate Result Buffer (Init 0)
     std::vector<uint8_t> visibility(width * height, 0);
@@ -123,23 +117,26 @@ std::vector<uint8_t> calculate_viewshed(
     int y_min = std::max(0, tx_y - max_dist_pixels);
     int y_max = std::min(height - 1, tx_y + max_dist_pixels);
 
-    // Top and Bottom Edges
-    for (int x = x_min; x <= x_max; x++) {
-        cast_ray(elevation_data, visibility, width, height, tx_x, tx_y, x, y_min, tx_elev_amsl, 30.0f);
-        cast_ray(elevation_data, visibility, width, height, tx_x, tx_y, x, y_max, tx_elev_amsl, 30.0f);
-    }
+    // 3. Angular Ray Casting (Sweep)
+    // Instead of iterating perimeter pixels, we sweep by angle.
+    // Step size determined by arc length < 1 pixel at max distance.
+    // Arc Length = Radius * theta. We want Arc Length ~ 0.5 to 1.0.
+    // theta = 1.0 / Radius.
+    
+    // Safety: prevent div by zero
+    if (max_dist_pixels < 1) return visibility;
 
-    // Left and Right Edges
-    for (int y = y_min + 1; y < y_max; y++) { // Avoid corners twice
-        cast_ray(elevation_data, visibility, width, height, tx_x, tx_y, x_min, y, tx_elev_amsl, 30.0f);
-        cast_ray(elevation_data, visibility, width, height, tx_x, tx_y, x_max, y, tx_elev_amsl, 30.0f);
+    float angular_step = 1.0f / (float)max_dist_pixels; 
+    
+    // Iterate 360 degrees
+    for (float angle = 0.0f; angle < 2.0f * PI; angle += angular_step) {
+        int x1 = tx_x + (int)(std::cos(angle) * max_dist_pixels);
+        int y1 = tx_y + (int)(std::sin(angle) * max_dist_pixels);
+
+        cast_ray(elevation_data, visibility, width, height, tx_x, tx_y, x1, y1, tx_elev_amsl, gsd_meters);
     }
     
-    // Note: This leaves "holes" in the raster for pixels not crossed by Bresenham lines at long distances.
-    // Denser raycasting is usually needed (angular steps) rather than just perimeter points.
-    // But Prompt Set 2 specifically asked for: "Bresenham's line algorithm to iterate rays from the transmitter to the edge of the bounding box".
-    // For a dense grid, iterating pixels on the perimeter is a common approximation.
-    // Artifacts may appear at large distances.
+    // Note: The angular sweep ensures dense coverage without moire/aliasing holes at distance.
     
     return visibility;
 }

@@ -548,6 +548,19 @@ const MapComponent = () => {
           />
         )}
 
+        {/* Multi-Site Composite Overlay */}
+        {compositeOverlay && compositeOverlay.bounds && (
+          <ImageOverlay
+            url={`data:image/png;base64,${compositeOverlay.image}`}
+            bounds={[
+              [compositeOverlay.bounds.north, compositeOverlay.bounds.west],
+              [compositeOverlay.bounds.south, compositeOverlay.bounds.east]
+            ]}
+            opacity={0.6}
+            zIndex={500}
+          />
+        )}
+
         {/* Visual Marker for Viewshed Observer */}
         {toolMode === "viewshed" && viewshedObserver && (
           <Marker

@@ -29,7 +29,8 @@ std::vector<uint8_t> calculate_viewshed(
     int tx_x, 
     int tx_y, 
     float tx_h_meters, 
-    int max_dist_pixels
+    int max_dist_pixels,
+    float gsd_meters
 );
 
 #endif // MESHRF_VIEWSHED_H
