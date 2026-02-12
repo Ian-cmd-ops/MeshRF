@@ -8,6 +8,7 @@ import {
   Tooltip,
   Polyline,
   Rectangle,
+  Circle,
   ZoomControl,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -373,7 +374,7 @@ const MapComponent = () => {
 
 
   // Viewshed Layer (Only active in 'viewshed' mode)
-  if (toolMode === "viewshed" && viewshedLayer && viewshedLayer.data) {
+  if (toolMode === "viewshed" && viewshedLayer && viewshedLayer.data && viewshedLayer.width && viewshedLayer.height) {
     // viewshedLayer is the single stitched viewshed from WASM worker
     const { width, height, data, bounds } = viewshedLayer;
 
@@ -395,19 +396,29 @@ const MapComponent = () => {
         image: imageData,
         bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
         opacity: 0.6,
-        showShadows: true,
+        showShadows: false,
+        // Pass normalized observer and radius for shader masking (Bug 2)
+        // FLIP Y: Texture coords are 0..1 (bottom-up in some contexts, top-down in others).
+        // If half is missing, it's likely a flip. 
+        // Let's try flipping Y: (1.0 - y)
+        observer: viewshedLayer.observerCoords 
+            ? [viewshedLayer.observerCoords.x / width, 1.0 - (viewshedLayer.observerCoords.y / height)] 
+            : [0.5, 0.5],
+        radius: viewshedLayer.radiusPixels 
+            ? (viewshedLayer.radiusPixels / width) 
+            : 0.0,
       }),
     );
   }
 
-  // Viewshed Bounding Box (Visual debugging)
-  let viewshedBounds = null;
-  if (toolMode === "viewshed" && viewshedLayer && viewshedLayer.bounds) {
-    const { west, south, east, north } = viewshedLayer.bounds;
-    viewshedBounds = [
-      [north, west],
-      [south, east],
-    ];
+  // Viewshed Debug Visuals
+  // 1. Configured Radius Circle (Cyan) - Useful for user to see max range
+  let debugRadiusCircle = null;
+  if (toolMode === "viewshed" && viewshedObserver && viewshedMaxDist) {
+      debugRadiusCircle = {
+          center: viewshedObserver,
+          radius: viewshedMaxDist
+      };
   }
 
   // RF Coverage Layer (Only active in 'rf_coverage' mode)
@@ -570,7 +581,7 @@ const MapComponent = () => {
               [compositeOverlay.bounds.north, compositeOverlay.bounds.west],
               [compositeOverlay.bounds.south, compositeOverlay.bounds.east]
             ]}
-            opacity={0.6}
+            opacity={0.4}
             zIndex={500}
           />
         )}
@@ -583,8 +594,10 @@ const MapComponent = () => {
             eventHandlers={{
               dragend: (e) => {
                 const { lat, lng } = e.target.getLatLng();
-                setViewshedObserver({ lat, lng });
-                runViewshedAnalysis({ lat, lng }, viewshedMaxDist);
+                // FIX BUG 3: Preserve antenna height on drag
+                const currentHeight = viewshedObserver?.height || 2.0;
+                setViewshedObserver({ lat, lng, height: currentHeight });
+                runViewshedAnalysis({ lat, lng, height: currentHeight }, viewshedMaxDist);
               },
             }}
           >
@@ -642,6 +655,17 @@ const MapComponent = () => {
           >
             <Popup>RF Transmitter</Popup>
           </Marker>
+        )}
+
+
+
+        {/* Debug: Viewshed Radius (Cyan Dashed) */}
+        {debugRadiusCircle && (
+            <Circle
+                center={debugRadiusCircle.center}
+                radius={debugRadiusCircle.radius}
+                pathOptions={{ color: '#00f2ff', weight: 1, dashArray: '5, 5', fill: false }}
+            />
         )}
 
         {/* Viewshed Floating Control */}

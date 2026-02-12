@@ -3,9 +3,9 @@
  * Handles 3x3 grid stitching for viewshed analysis.
  */
 
-// Stitches a 3x3 grid of tiles (256x256 each) into a single 768x768 grid
-export function stitchElevationGrids(tiles, centerTile, tileSize = 256) {
-    const gridSize = 3; // 3x3 grid
+// Stitches a NxN grid of tiles (256x256 each) into a single grid
+export function stitchElevationGrids(tiles, centerTile, tileSize = 256, tileRadius = 1) {
+    const gridSize = tileRadius * 2 + 1; // e.g., 1 -> 3x3, 2 -> 5x5
     const stitchedWidth = gridSize * tileSize;
     const stitchedHeight = gridSize * tileSize;
     const stitchedData = new Float32Array(stitchedWidth * stitchedHeight);
@@ -19,9 +19,9 @@ export function stitchElevationGrids(tiles, centerTile, tileSize = 256) {
         tileMap.set(`${t.tile.z}/${t.tile.x}/${t.tile.y}`, t);
     });
 
-    // Iterate relative grid positions: -1 to +1
-    for (let rowOffset = -1; rowOffset <= 1; rowOffset++) {
-        for (let colOffset = -1; colOffset <= 1; colOffset++) {
+    // Iterate relative grid positions: -tileRadius to +tileRadius
+    for (let rowOffset = -tileRadius; rowOffset <= tileRadius; rowOffset++) {
+        for (let colOffset = -tileRadius; colOffset <= tileRadius; colOffset++) {
             // Target tile coords
             let tx = centerTile.x + colOffset;
             const ty = centerTile.y + rowOffset;
@@ -35,11 +35,9 @@ export function stitchElevationGrids(tiles, centerTile, tileSize = 256) {
             const tile = tileMap.get(`${tz}/${normalizedTx}/${ty}`);
             
             // Destination origin in stitched grid
-            // rowOffset -1 -> index 0 (0 * 256)
-            // rowOffset  0 -> index 1 (1 * 256)
-            // rowOffset +1 -> index 2 (2 * 256)
-            const destOffsetX = (colOffset + 1) * tileSize;
-            const destOffsetY = (rowOffset + 1) * tileSize;
+            // rowOffset -1 -> index 0 (if radius 1) -> (rowOffset + radius) * tileSize
+            const destOffsetX = (colOffset + tileRadius) * tileSize;
+            const destOffsetY = (rowOffset + tileRadius) * tileSize;
 
             if (tile) {
                 // Copy row by row to ensure correct memory layout
@@ -69,7 +67,7 @@ export function stitchElevationGrids(tiles, centerTile, tileSize = 256) {
 }
 
 // Transforms observer lat/lon to pixel coordinates within the stitched grid
-export function transformObserverCoords(observerLat, observerLon, centerTile, stitchedWidth, stitchedHeight, tileSize = 256) {
+export function transformObserverCoords(observerLat, observerLon, centerTile, stitchedWidth, stitchedHeight, tileSize = 256, tileRadius = 1) {
     // Use exact Web Mercator projection to find the observer's floating-point tile coordinates.
     // This avoids errors from linear interpolation at high latitudes.
     
@@ -91,12 +89,9 @@ export function transformObserverCoords(observerLat, observerLon, centerTile, st
     const dx = observerTileX - centerTile.x;
     const dy = observerTileY - centerTile.y;
     
-    // In the stitched grid (3x3), the center tile starts at (tileSize, tileSize).
-    // So if dx=0, dy=0 (top-left of center tile), result is (256, 256).
-    // If dx=-1, dy=-1 (top-left of top-left tile), result is (0, 0).
-    
-    const stitchedX = (dx + 1) * tileSize;
-    const stitchedY = (dy + 1) * tileSize;
+    // In the stitched grid, the center tile starts at (tileRadius * tileSize, tileRadius * tileSize).
+    const stitchedX = (dx + tileRadius) * tileSize;
+    const stitchedY = (dy + tileRadius) * tileSize;
 
     return {
         x: Math.floor(stitchedX),
@@ -119,11 +114,11 @@ function getTileBounds(x, y, z) {
     };
 }
 
-export function calculateStitchedBounds(centerTile) {
-    // Top-Left tile: (-1, -1)
-    const tl = { x: centerTile.x - 1, y: centerTile.y - 1, z: centerTile.z };
-    // Bottom-Right tile: (+1, +1)
-    const br = { x: centerTile.x + 1, y: centerTile.y + 1, z: centerTile.z };
+export function calculateStitchedBounds(centerTile, tileRadius = 1) {
+    // Top-Left tile: (-radius, -radius)
+    const tl = { x: centerTile.x - tileRadius, y: centerTile.y - tileRadius, z: centerTile.z };
+    // Bottom-Right tile: (+radius, +radius)
+    const br = { x: centerTile.x + tileRadius, y: centerTile.y + tileRadius, z: centerTile.z };
 
     const tlBounds = getTileBounds(tl.x, tl.y, tl.z);
     const brBounds = getTileBounds(br.x, br.y, br.z);

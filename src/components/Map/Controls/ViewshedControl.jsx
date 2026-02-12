@@ -150,12 +150,12 @@ const ViewshedControl = ({ maxDist, setMaxDist, isCalculating, progress, onRecal
                         animation: 'loading-bar 1.5s infinite linear'
                     }} />
                 )}
-                {!isCalculating && progress > 0 && progress < 100 && (
+                {!isCalculating && progress > 0 && (
                      <div style={{
                         height: '100%',
-                        width: `${progress}%`,
-                        background: '#00f2ff',
-                        transition: 'width 0.3s ease'
+                        width: '100%', // Force full width when done
+                        background: '#00ff41', // Green for success/complete
+                        transition: 'width 0.3s ease, background-color 0.3s ease'
                     }} />
                 )}
             </div>

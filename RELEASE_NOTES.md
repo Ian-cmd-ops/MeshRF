@@ -1,78 +1,34 @@
-# Release v1.15.0: Viewshed Tool UX Overhaul
+# Release v1.15.1: Viewshed Stability & Dynamic Grid
 
-This release delivers a comprehensive UX refresh for the Viewshed Analysis tool, including visual theming, performance improvements, and critical bug fixes.
+This patch release addresses critical rendering bugs in the Viewshed tool and implements a new **Dynamic Grid Stitching** engine to support long-range analysis without clipping.
 
-## ✨ Visual Enhancements
+## 🚀 Key Improvements
 
-### Purple Theming
+### Dynamic Grid Sizing (No More Clipping)
 
-The Viewshed tool now features consistent **purple branding** (`#a855f7`) throughout:
+Previously, the viewshed tool was limited to a fixed 3x3 tile grid (approx. 30km radius), causing the analysis to be "cut off" at the edges for long-distance calculations.
 
-- **Purple viewshed overlay** with transparency for better map readability
-- **Purple distance slider** with dynamic progress fill showing the selected range
-- **Purple "Recalculate Viewshed" button** with smooth hover effects
+- **New Logic**: The engine now acts intelligently, calculating exactly how many elevation tiles are needed to cover your requested radius.
+- **Result**: Whether you scan 10km or 100km, the system automatically fetches and stitches a 5x5, 7x7, or larger grid to ensure **zero clipping**.
 
-### Custom SVG Markers
+### Visual Clarity
 
-- Replaced PNG marker icons with **inline SVG** for **instant rendering** (zero loading delay)
-- Markers feature branded **cyan color** (`#00f2ff`) with drop shadows for visual depth
-- No more waiting for marker assets to load when placing points
+- **Shadows Removed**: We found that rendering obstructed areas as "faint purple" was confusing. We have **disabled shadow rendering**, so obstructed areas are now fully transparent. This makes the "True Coverage" stand out clearly against the dark map.
+- **Radius Adjustment**: Default Multi-Site scan radius set to **7.5 km**, offering 50% more range than before while maintaining fast scan times.
+- **Radius Boundary**: A **Cyan Dashed Circle** now appears around the observer, showing you exactly where the calculation limit is.
 
-### Dark Glassmorphism Theme
+### Stability Fixes
 
-All Leaflet UI elements now use custom **dark glassmorphism** styling:
+- **Crash Fix**: Resolved a generic "React Error" that would occur when placing the Viewshed marker rapidly.
+- **Height Persistence**: Fixed a bug where moving the marker would reset your custom Antenna Height to the default 2m.
+- **Slider Fix**: The "Recalculate" button now reliably respects the Distance Slider value instead of reverting to defaults.
 
-- **Popups and tooltips** with dark background (`rgba(10, 10, 18, 0.95)`)
-- **Neon cyan borders** and subtle glow effects
-- **Backdrop blur** for a modern, professional aesthetic
-- Fully integrated with the application's cyberpunk design language
+## 🛠️ UI Polish
 
-### Improved Animations
-
-- **Guidance overlays** now use `slideUp` animation (0.3s ease-out) instead of `fadeIn`
-- More contextually appropriate for bottom-anchored floating panels
-- Smoother, more polished user experience
-
-## 🐛 Critical Bug Fixes
-
-### Recalculate Button
-
-Fixed a critical bug where the "Recalculate Viewshed" button was completely non-functional:
-
-- **Root cause**: Function signature mismatch in `runViewshedAnalysis`
-- **Solution**: Updated function to accept both object pattern `({lat, lng}, maxDist)` and individual pattern `(lat, lng, height, maxDist)`
-- Users can now adjust the distance slider and click "Recalculate" to update the viewshed overlay
-
-### Marker Drag Behavior
-
-- Corrected the viewshed marker's `dragend` event handler
-- Now properly triggers new analysis when markers are moved
-- Parameters are passed correctly to the analysis engine
-
-### Click-Through Issue
-
-- Fixed pointer-events on the ViewshedControl floating panel
-- Map interactions (pan, zoom, click) now work properly even when the panel is visible
-
-### Module Import Warning
-
-- Resolved ES6 module import order warning in `useViewshedTool.js`
-- All imports are now at the top of the file per JavaScript module standards
-
-## ⚙️ Configuration Updates
-
-- **Default Antenna Height**: Increased from 5 meters to **9.144 meters (30 feet)** for more realistic baseline scenarios
-
-## 🧹 Code Cleanup
-
-- Removed redundant "Viewshed Observer" tooltip (was redundant with popup)
-- Cleaned up all debug console logs added during troubleshooting
-- Improved code organization and readability
+- **Progress Bar**: The progress bar now turns **Neon Green** and fills to 100% when the calculation finishes, giving better feedback.
 
 ---
 
-## Developer Notes
+## Upgrade Instructions
 
-This release focused on polish and bug fixes for the Viewshed tool. The custom SVG markers and dark theme styling apply globally to all map markers and Leaflet UI components, improving consistency across the entire application.
-
-The function signature fix for `runViewshedAnalysis` ensures compatibility with multiple calling patterns, making the API more flexible for future enhancements.
+No special actions required. This is a frontend-only update.

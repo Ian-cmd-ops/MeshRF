@@ -16,11 +16,25 @@ uniform sampler2D bitmapTexture;
 uniform vec4 bounds;
 uniform float opacity;
 uniform float uShowShadows;
+uniform vec2 uObserver;
+uniform float uRadius;
 
 in vec2 vTexCoord;
 out vec4 fragColor;
 
 void main() {
+    // 1. Check Radius (Masking)
+    // Distance in UV space (0..1)
+    // Since texture is square (768x768), direct distance is correct
+    float dist = distance(vTexCoord, uObserver);
+    
+    // If we have a valid radius and are outside it, discard
+    // Small buffer of 0.001 to avoid floating point artifacts at exact boundary
+    if (uRadius > 0.0 && dist > uRadius) {
+        fragColor = vec4(0.0);
+        return;
+    }
+
     vec4 texColor = texture(bitmapTexture, vTexCoord);
     
     float visible = texColor.r;
@@ -50,7 +64,9 @@ export default class WasmViewshedLayer extends BitmapLayer {
     const uniforms = {
         bounds: bounds || [0, 0, 0, 0],
         opacity: this.props.opacity !== undefined ? this.props.opacity : 1.0,
-        uShowShadows: this.props.showShadows ? 1.0 : 0.0
+        uShowShadows: this.props.showShadows ? 1.0 : 0.0,
+        uObserver: this.props.observer || [0.5, 0.5],
+        uRadius: this.props.radius || 0.0
     };
     if (this.state.model && this.state.model.shaderInputs) {
       this.state.model.shaderInputs.setProps({ uniforms });
@@ -62,5 +78,7 @@ export default class WasmViewshedLayer extends BitmapLayer {
 WasmViewshedLayer.layerName = 'WasmViewshedLayer';
 WasmViewshedLayer.defaultProps = {
     ...BitmapLayer.defaultProps,
-    showShadows: { type: 'boolean', value: false }
+    showShadows: { type: 'boolean', value: false },
+    observer: { type: 'array', value: [0.5, 0.5] },
+    radius: { type: 'number', value: 0.0 }
 };

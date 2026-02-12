@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.1] - 2026-02-11
+
+### Fixed
+
+- **Viewshed Clipping**: Implemented **Dynamic Grid Sizing** in the tile stitcher. The engine now intelligently calculates the required grid size (5x5, 7x7, etc.) based on the requested radius, preventing viewsheds from being clipped by the 3x3 data boundary at large distances.
+- **Runtime Crash**: Resolved a critical crash ("Cannot convert undefined or null to object") caused by an incorrect Leaflet component usage (`L.Circle`) and added data safety guards to the DeckGL layer to prevent race conditions.
+- **Radius Parameter**: Fixed a bug where the viewshed worker ignored the slider value and used a default distance.
+- **Antenna Height**: Fixed an issue where the observer's antenna height would reset to the default (2m) when dragging the marker.
+
+### Changed
+
+- **Visual Clarity**: Disabled "Shadow" rendering (faint purple) for obstructed areas. Obstructed pixels are now transparent, creating a cleaner "Coverage Map" aesthetic where only valid signal areas are shown.
+- **Radius Adjustment**: Increased default Multi-Site scan radius to **7.5 km** (up from 5km) for a better balance of range and performance.
+- **UI Polish**: The Viewshed progress bar now fills to 100% and turns neon green upon successful completion.
+- **Debug Indicators**: Added a **Cyan Dashed Circle** overlay to visually confirm the configured calculation radius on the map.
+
 ## [1.15.0] - 2026-02-10
 
 ### Added

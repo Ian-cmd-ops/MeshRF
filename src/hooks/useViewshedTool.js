@@ -72,12 +72,16 @@ export function useViewshedTool(active) {
                    for(let k=0; k<result.length; k++) { if(result[k] > 0) visibleCount++; }
 
                    
-                   if (currentBoundsRef.current) {
+                    if (currentBoundsRef.current) {
                        setResultLayer({
                            data: result,
                            width: currentBoundsRef.current.width,
                            height: currentBoundsRef.current.height,
-                           bounds: currentBoundsRef.current.bounds
+                           bounds: currentBoundsRef.current.bounds,
+                           // Pass metadata for shader (Bug 2 fix)
+                           observerCoords: currentBoundsRef.current.observerCoords,
+                           gsd: currentBoundsRef.current.gsd,
+                           radiusPixels: currentBoundsRef.current.radiusPixels
                        });
                    }
                    setIsCalculating(false);
@@ -128,7 +132,6 @@ export function useViewshedTool(active) {
     const getNecessaryTiles = (centerTile, lat, radiusMeters) => {
       // Calculate tile width in meters at this latitude/zoom
       // Earth circum = 40075017 m
-      // Tile width = (cos(lat) * circum) / 2^zoom
       const earthCircum = 40075017;
       const latRad = lat * Math.PI / 180;
       const tileWidthMeters = (Math.cos(latRad) * earthCircum) / Math.pow(2, centerTile.z);
@@ -154,13 +157,13 @@ export function useViewshedTool(active) {
               tiles.push({ x: wrappedX, y, z: centerTile.z });
           }
       }
-      return tiles;
+      return { tiles, radiusTiles };
     };
 
     const fetchAndDecodeTile = async (tile) => {
         const tileUrl = `/api/tiles/${tile.z}/${tile.x}/${tile.y}.png`;
         try {
-            const img = new Image();
+            const img = document.createElement('img');
             img.crossOrigin = "Anonymous";
             img.src = tileUrl;
             await new Promise((resolve, reject) => {
@@ -185,7 +188,6 @@ export function useViewshedTool(active) {
                 floatData[i / 4] = -10000 + ((r * 256 * 256 + g * 256 + b) * 0.1);
             }
             
-            // We don't necessarily need bounds here for stitching, just data and indices
             return {
                 elevation: floatData,
                 width: img.width,
@@ -198,7 +200,7 @@ export function useViewshedTool(active) {
         }
     };
 
-    const runAnalysis = useCallback(async (latOrObserver, lonOrMaxDist, height = 2.0, maxDist = 3000) => {
+    const runAnalysis = useCallback(async (latOrObserver, lonOrMaxDist, height = 2.0, maxDist = 25000) => {
         // Handle both calling patterns:
         // 1. runAnalysis({lat, lng}, maxDist) - object pattern
         // 2. runAnalysis(lat, lng, height, maxDist) - individual pattern
@@ -208,6 +210,10 @@ export function useViewshedTool(active) {
             // Object pattern: first arg is {lat, lng}, second is maxDist
             lat = latOrObserver.lat;
             lon = latOrObserver.lng;
+            // FIX BUG 3: Extract height if present, otherwise keep default
+            if (latOrObserver.height !== undefined) {
+                height = latOrObserver.height;
+            }
             actualMaxDist = lonOrMaxDist || maxDist;
         } else {
             // Individual pattern: (lat, lon, height, maxDist)
@@ -249,8 +255,9 @@ export function useViewshedTool(active) {
             const latRad = lat * Math.PI / 180;
             const gsd_meters = (2 * Math.PI * 6378137 * Math.cos(latRad)) / (256 * Math.pow(2, zoom));
             
+            
             // 1. Get Tiles
-            const targetTiles = getNecessaryTiles(centerTile, lat, actualMaxDist);
+            const { tiles: targetTiles, radiusTiles: tileRadius } = getNecessaryTiles(centerTile, lat, actualMaxDist);
             
             // 2. Fetch all in parallel with progress
             let completed = 0;
@@ -274,23 +281,28 @@ export function useViewshedTool(active) {
             
             setProgress(95); // Stitching...
             
-            // 3. Stitch Tiles
-            const stitched = stitchElevationGrids(validTiles, centerTile, 256);
-
+            // 3. Stitch Tiles (Dynamic Pivot)
+            const stitched = stitchElevationGrids(validTiles, centerTile, 256, tileRadius);
 
             
             // 4. Calculate Observer Position in Stitched Grid
-            const observerCoords = transformObserverCoords(lat, lon, centerTile, stitched.width, stitched.height, 256);
+            const observerCoords = transformObserverCoords(lat, lon, centerTile, stitched.width, stitched.height, 256, tileRadius);
             
             // 5. Calculate Stitched Geographic Bounds
-            const bounds = calculateStitchedBounds(centerTile);
+            const bounds = calculateStitchedBounds(centerTile, tileRadius);
             
+            const maxDistPixels = Math.floor(actualMaxDist / gsd_meters); // FIX BUG 2: Calculate generic
+
             // Store context for callback
             // eslint-disable-next-line react-hooks/exhaustive-deps
             currentBoundsRef.current = {
                 width: stitched.width,
                 height: stitched.height,
-                bounds: bounds
+                bounds: bounds,
+                 // Store context for resultLayer (Bug 2 fix)
+                observerCoords: observerCoords,
+                gsd: gsd_meters,
+                radiusPixels: maxDistPixels
             };
             
             // 6. Safety Check before Transfer
@@ -309,7 +321,7 @@ export function useViewshedTool(active) {
                     tx_x: observerCoords.x,
                     tx_y: observerCoords.y,
                     tx_h: height,
-                    max_dist: Math.floor(maxDist / gsd_meters), // Use actual GSD for pixel distance
+                    max_dist: maxDistPixels, // FIX BUG 1: Use actualMaxDist (via pre-calc variable)
                     gsd_meters: gsd_meters
                 }
             }, [stitched.data.buffer]); 
