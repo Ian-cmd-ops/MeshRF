@@ -1,27 +1,34 @@
-# Release v1.15.2: Mobile Polish & UI Refinements
+# Release v1.15.3: Security Hardening & Stability
 
-This patch release focuses on optimizing the mobile experience and refining the user interface to maximize screen real estate and usability.
+This patch release focuses on critical security remediations and backend stability improvements.
 
-## 📱 Mobile Experience
+## 🔒 Security Hardening
 
-### Layout Optimizations
+### Infrastructure & Config
 
-- **Viewshed Control Panel**: Now correctly anchored to the bottom of the screen on mobile devices, ensuring easy access without blocking the map view.
-- **Guidance Overlays**: Repositioned to the top of the screen on mobile to avoid overlapping with bottom controls, with adjusted spacing to clear the top toolbar.
-- **Advanced RF Settings**: The floating settings box has been moved (offset `190px` from bottom) to sit perfectly above the main control panel.
+- **Redis Authentication**: Enabled password protection for the Redis database service, ensuring the data layer is secure.
+- **Environment Safety**: Removed `process.env` usage from the frontend build process to prevent potential leakage of secrets.
+- **CORS Restriction**: Tightened API access control to allow requests only from localhost origins.
 
-## 🎨 UI Refinements
+### Input & Output Validation
 
-### Compact Controls
+- **Coordinate Validation**: Added strict validation for latitude/longitude bounds to reject invalid geographic data early.
+- **Rate Limiting**: Introduced rate limits on expensive simulation endpoints to prevent abuse and denial-of-service scenarios.
+- **KML Sanitization**: Implemented XML escaping for KML exports to neutralize potential injection vectors.
 
-- **Greedy Optimization**: The "Greedy Optimization" toggle in the Multi-Site Manager has been redesigned into a compact, single-line control. This reduces visual clutter and provides more room for the node list.
+## 🐛 Bug Fixes
 
-### Documentation
+### Worker Stability
 
-- **Accuracy**: Fixed a typo in the Viewshed guidance text to correctly refer to the visible area as "Purple" instead of "Green".
+- **Connection Pooling**: Fixed a critical issue where the background worker would exhaust system sockets (`Error 99`) during heavy multi-site scans. Implemented proper Redis connection pooling to reuse connections efficiently.
 
 ---
 
 ## Upgrade Instructions
 
-No special actions required. This is a frontend-only update.
+Requires a restart of the backend services to apply new Redis password configurations:
+
+```bash
+docker-compose down
+docker-compose up -d --build
+```

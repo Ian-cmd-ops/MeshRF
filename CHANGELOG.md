@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.3] - 2026-02-12
+
+### Security
+
+- **Redis Authentication**: Enabled password protection (`requirepass`) for Redis and configured `rf-engine` / `rf-worker` to authenticate securely.
+- **Frontend Hardening**: Removed `process.env` exposure from the frontend build to prevent environment variable leakage.
+- **Input Validation**: Added Pydantic validators (`field_validator`) to `NodeConfig` to enforce coordinate bounds (`lat` [-90, 90], `lon` [-180, 180]).
+- **Rate Limiting**: Implemented `slowapi` rate limits on expensive endpoints:
+  - `/scan/start`: 5/minute
+  - `/optimize-location`: 10/minute
+  - `/elevation-batch`: 30/minute
+- **Network Security**: Restricted CORS to localhost (`http://localhost`, `http://127.0.0.1`).
+- **Output Encoding**: Added XML escaping to KML exports to prevent injection attacks.
+
+### Fixed
+
+- **Worker Connection Exhaustion**: Resolved `Error 99: Cannot assign requested address` in `rf-worker` by implementing a `redis.ConnectionPool` in `tasks/viewshed.py` and `tile_manager.py`.
+- **Python Compatibility**: Fixed `int | None` type hint syntax to `Optional[int]` for Python 3.9 compatibility.
+
 ## [1.15.2] - 2026-02-11
 
 ### Fixed
