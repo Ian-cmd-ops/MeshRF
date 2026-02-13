@@ -47,7 +47,7 @@ export default defineConfig({
               backgroundSync: {
                 name: 'api-queue',
                 options: {
-                  maxRetentionTime: 24 * 60
+                  maxRetentionTime: 5
                 }
               }
             }
@@ -75,9 +75,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
   }},
-  define: {
-    'process.env': process.env
-  },
+
   test: {
     globals: true,
     environment: "jsdom",

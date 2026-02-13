@@ -7,8 +7,9 @@ def get_env(key, default):
 
 REDIS_HOST = get_env("REDIS_HOST", "redis")
 REDIS_PORT = get_env("REDIS_PORT", "6379")
-BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
-BACKEND_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+REDIS_PASSWORD = get_env("REDIS_PASSWORD", "changeme")
+BROKER_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
+BACKEND_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
 
 celery_app = Celery(
     "meshrf_worker",

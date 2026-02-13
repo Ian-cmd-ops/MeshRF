@@ -1,5 +1,6 @@
 import csv
 import io
+from xml.sax.saxutils import escape
 # import simplekml # If we had it, but let's do manual XML to avoid dependencies if possible, or use a simple template.
 # simplekml is better but requires install. Let's write manual XML for KML to keep container light if simplekml isn't installed.
 # We checked requirements earlier? No. Let's assume manual KML generation for now.
@@ -56,10 +57,10 @@ def generate_kml(results, name="RF Scan Results"):
         kml.append(f'<styleUrl>{style}</styleUrl>')
         kml.append('<description>')
         kml.append(f'<![CDATA['
-                   f'<b>Score:</b> {score}<br/>'
-                   f'<b>Elevation:</b> {res.get("elevation",0):.1f}m<br/>'
-                   f'<b>Prominence:</b> {res.get("prominence",0):.1f}m<br/>'
-                   f'<b>Fresnel Factor:</b> {res.get("fresnel",0):.2f}'
+                   f'<b>Score:</b> {escape(str(score))}<br/>'
+                   f'<b>Elevation:</b> {escape(str(res.get("elevation",0)))}m<br/>'
+                   f'<b>Prominence:</b> {escape(str(res.get("prominence",0)))}m<br/>'
+                   f'<b>Fresnel Factor:</b> {escape(str(res.get("fresnel",0)))}'
                    f']]>')
         kml.append('</description>')
         kml.append('<Point>')

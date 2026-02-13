@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from typing import Optional
 import io
 from starlette.responses import Response
 from PIL import Image
@@ -7,12 +8,20 @@ import numpy as np
 import mercantile
 import os
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
+from pydantic import field_validator
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="MeshRF Engine")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for dev, or specify ["http://localhost:5173"]
+    allow_origins=["http://localhost", "http://localhost:80", "http://127.0.0.1"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +52,20 @@ class LinkRequest(BaseModel):
     environment: str = "suburban"
     k_factor: float = 1.333
     clutter_height: float = 0.0
+
+    @field_validator('tx_lat', 'rx_lat')
+    @classmethod
+    def validate_lat(cls, v):
+        if not -90 <= v <= 90:
+            raise ValueError('Latitude must be between -90 and 90')
+        return v
+
+    @field_validator('tx_lon', 'rx_lon')
+    @classmethod
+    def validate_lon(cls, v):
+        if not -180 <= v <= 180:
+            raise ValueError('Longitude must be between -180 and 180')
+        return v
 
 @app.post("/calculate-link")
 def calculate_link_endpoint(req: LinkRequest):
@@ -97,6 +120,20 @@ class ElevationRequest(BaseModel):
     lat: float
     lon: float
 
+    @field_validator('lat')
+    @classmethod
+    def validate_lat(cls, v):
+        if not -90 <= v <= 90:
+            raise ValueError('Latitude must be between -90 and 90')
+        return v
+
+    @field_validator('lon')
+    @classmethod
+    def validate_lon(cls, v):
+        if not -180 <= v <= 180:
+            raise ValueError('Longitude must be between -180 and 180')
+        return v
+
 @app.post("/get-elevation")
 def get_elevation_endpoint(req: ElevationRequest):
     """
@@ -111,7 +148,8 @@ class BatchElevationRequest(BaseModel):
     dataset: str = "ned10m"
 
 @app.post("/elevation-batch")
-def get_batch_elevation(req: BatchElevationRequest):
+@limiter.limit("30/minute")
+def get_batch_elevation(req: BatchElevationRequest, request: Request):
     """
     Batch elevation lookup for frontend path profiles.
     Used for optimized path profiles.
@@ -183,29 +221,45 @@ def get_elevation_tile(z: int, x: int, y: int):
 
 # --- Async Task Endpoints ---
 
+from models import NodeConfig
+
+class ScanRequest(BaseModel):
+    nodes: list[NodeConfig]
+    radius: float = 5000.0
+    optimize_n: Optional[int] = None
+    frequency_mhz: float = 915.0
+    rx_height: float = 2.0
+    k_factor: float = 1.333
+    clutter_height: float = 0.0
+
+    @field_validator('radius')
+    @classmethod
+    def validate_radius(cls, v):
+        if not 100 <= v <= 50000:
+            raise ValueError('Radius must be between 100 and 50000 meters')
+        return v
+
 @app.post("/scan/start")
-def start_scan_endpoint(req: dict):
+@limiter.limit("5/minute")
+def start_scan_endpoint(req: ScanRequest, request: Request):
     """
     Start asynchronous batch viewshed scan (Celery).
     """
     from tasks.viewshed import calculate_batch_viewshed
     
-    nodes = req.get("nodes", [])
-    optimize_n = req.get("optimize_n", None)
-    
-    if not nodes:
+    if not req.nodes:
         return {"status": "error", "message": "No nodes provided"}
 
     # Start Celery Task
     task = calculate_batch_viewshed.delay({
-        "nodes": nodes,
+        "nodes": [n.model_dump() for n in req.nodes], # Convert Pydantic models to dicts
         "options": {
-            "radius": req.get("radius", 7500),
-            "optimize_n": optimize_n,
-            "frequency_mhz": req.get("frequency_mhz", 915.0),
-            "rx_height": req.get("rx_height", 2.0),
-            "k_factor": req.get("k_factor", 1.333),
-            "clutter_height": req.get("clutter_height", 0.0)
+            "radius": req.radius,
+            "optimize_n": req.optimize_n,
+            "frequency_mhz": req.frequency_mhz,
+            "rx_height": req.rx_height,
+            "k_factor": req.k_factor,
+            "clutter_height": req.clutter_height
         }
     })
     
@@ -258,8 +312,23 @@ class OptimizeRequest(BaseModel):
     weights: dict = {"elevation": 0.5, "prominence": 0.3, "fresnel": 0.2}
     existing_nodes: list = [] # List of {lat, lon, height}
 
+    @field_validator('min_lat', 'max_lat')
+    @classmethod
+    def validate_lat(cls, v):
+        if not -90 <= v <= 90:
+            raise ValueError('Latitude must be between -90 and 90')
+        return v
+
+    @field_validator('min_lon', 'max_lon')
+    @classmethod
+    def validate_lon(cls, v):
+        if not -180 <= v <= 180:
+            raise ValueError('Longitude must be between -180 and 180')
+        return v
+
 @app.post("/optimize-location")
-def optimize_location_endpoint(req: OptimizeRequest):
+@limiter.limit("10/minute")
+def optimize_location_endpoint(req: OptimizeRequest, request: Request):
     """
     Find best location using multi-criteria analysis (elevation, prominence, fresnel).
     """

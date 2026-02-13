@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Tuple
 
 class NodeConfig(BaseModel):
@@ -8,6 +8,20 @@ class NodeConfig(BaseModel):
     height: float = 10.0
     name: Optional[str] = None
     radius: float = 5000.0  # Max coverage radius in meters
+
+    @field_validator('lat')
+    @classmethod
+    def validate_lat(cls, v):
+        if not -90 <= v <= 90:
+            raise ValueError('Latitude must be between -90 and 90')
+        return v
+
+    @field_validator('lon')
+    @classmethod
+    def validate_lon(cls, v):
+        if not -180 <= v <= 180:
+            raise ValueError('Longitude must be between -180 and 180')
+        return v
 
 class NodeCollection(BaseModel):
     nodes: List[NodeConfig]
