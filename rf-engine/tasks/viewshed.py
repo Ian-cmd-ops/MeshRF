@@ -14,10 +14,19 @@ import rf_physics
 logger = get_task_logger(__name__)
 
 # Re-init redis/tile_manager here for worker context
-# Or use the one from worker.py if we move it there.
-# Better to init fresh to avoid fork safety issues with connections.
+# Use ConnectionPool to prevent exhaust
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
-redis_client = redis.Redis(host=REDIS_HOST, port=6379, db=0)
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "changeme")
+
+# Global Pool
+pool = redis.ConnectionPool(
+    host=REDIS_HOST, 
+    port=6379, 
+    db=0, 
+    password=REDIS_PASSWORD,
+    max_connections=50
+)
+redis_client = redis.Redis(connection_pool=pool)
 tile_manager = TileManager(redis_client)
 
 @celery_app.task(bind=True)
