@@ -36,7 +36,8 @@ from optimization_service import OptimizationService
 # --- Initialization ---
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
-redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "changeme")
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, password=REDIS_PASSWORD)
 tile_manager = TileManager(redis_client)
 optimization_service = OptimizationService(tile_manager)
 
