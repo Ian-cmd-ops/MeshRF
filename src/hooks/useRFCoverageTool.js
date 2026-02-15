@@ -10,6 +10,7 @@ import { stitchElevationGrids, transformObserverCoords, calculateStitchedBounds 
 export const useRFCoverageTool = (active) => {
     const [resultLayer, setResultLayer] = useState(null);
     const [isCalculating, setIsCalculating] = useState(false);
+    const [wasmError, setWasmError] = useState(null);
     const resultLayerRef = useRef(null); // Store actual data in ref
     const [_renderVersion, setRenderVersion] = useState(0); // Trigger re-renders
     const wasmModuleRef = useRef(null);
@@ -33,6 +34,9 @@ export const useRFCoverageTool = (active) => {
             }
         }).catch(err => {
             console.error('Failed to load RF Coverage Wasm:', err);
+            if (mounted) {
+                setWasmError('RF calculation engine failed to load. Try refreshing the page.');
+            }
         });
 
         return () => { mounted = false; };
@@ -100,6 +104,11 @@ export const useRFCoverageTool = (active) => {
      * @param {object} rfParams - RF parameters {freq, txPower, txGain, rxGain, rxSensitivity}
      */
     const runAnalysis = async (lat, lng, txHeight, maxDist, rfParams) => {
+        if (wasmError) {
+            console.error('Cannot run analysis: WASM not loaded');
+            return;
+        }
+        
         if (!wasmModuleRef.current) {
             console.error('Wasm module not loaded');
             return;
@@ -243,7 +252,8 @@ export const useRFCoverageTool = (active) => {
         runAnalysis, 
         resultLayer: resultLayerRef.current || resultLayer, // Return ref value (preserves data!)
         isCalculating, 
-        clear 
+        clear,
+        wasmError
     };
 };
 

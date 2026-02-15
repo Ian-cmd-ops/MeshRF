@@ -1,8 +1,11 @@
 import numpy as np
 import math
 import heapq
+import logging
 import rf_physics
 from rf_physics import haversine_distance, calculate_path_loss
+
+logger = logging.getLogger(__name__)
 
 def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, rx_h=2.0, freq_mhz=915.0, resolution_m=30, model='bullington'):
     """
@@ -22,9 +25,7 @@ def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, rx_h=2.0, f
     # 2. Define Grid Resolution
     # Use coarse grid for performance (e.g. 100m)
     if resolution_m < 100:
-        # TODO: Add proper logger
-        # logger.warning(f"resolution_m={resolution_m} is below minimum 100m; using 100m for performance.")
-        print(f"WARNING: resolution_m={resolution_m} is below minimum 100m; using 100m for performance.")
+        logger.warning(f"resolution_m={resolution_m} is below minimum 100m; using 100m for performance.")
         resolution_m = 100
     eff_res_m = resolution_m
     
@@ -39,6 +40,7 @@ def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, rx_h=2.0, f
     lons = np.linspace(min_lon, max_lon, cols)
     
     grid = np.zeros((rows, cols))
+    error_count = 0
     
     # 3. Iterate and Check LOS
     # This is O(N*M), where N*M ~ 2500-10000. 
@@ -74,8 +76,13 @@ def calculate_viewshed(tile_manager, tx_lat, tx_lon, tx_h, radius_m, rx_h=2.0, f
                     grid[r, c] = 1.0 # Visible
                     
             except Exception as e:
-                # Fallback or skip
+                error_count += 1
+                if error_count <= 3:
+                    logger.warning(f"Viewshed cell ({r},{c}) failed: {e}")
                 continue
+    
+    if error_count > 0:
+        logger.warning(f"Viewshed completed with {error_count} failed cells out of {rows * cols}")
             
     return grid, lats, lons
 

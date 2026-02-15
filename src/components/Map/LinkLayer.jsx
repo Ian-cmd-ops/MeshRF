@@ -73,6 +73,7 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
         
         setLinkStats(prev => ({ ...prev, loading: true }));
         
+        // Use configRef for values that change frequently to avoid dependency issues
         const currentConfig = configRef.current;
         const h1 = parseFloat(currentConfig.nodeConfigs.A.antennaHeight);
         const h2 = parseFloat(currentConfig.nodeConfigs.B.antennaHeight);
@@ -136,13 +137,13 @@ const LinkLayer = ({ nodes, setNodes, linkStats, setLinkStats, setCoverageOverla
             console.error("Link Analysis Failed", err);
             setLinkStats(prev => ({ ...prev, loading: false, isObstructed: false, minClearance: 0 }));
         });
-    }, [setLinkStats, propagationSettings]);
+    }, [propagationSettings, itmReady, calculateITM, groundType, climate]);
 
     useEffect(() => {
         if (nodes.length === 2) {
              runAnalysis(nodes[0], nodes[1]);
         }
-    }, [nodes, runAnalysis, recalcTimestamp]);
+    }, [nodes, recalcTimestamp, propagationSettings]); // Trigger on model change
 
     useMapEvents({
         click(e) {

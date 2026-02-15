@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import LinkProfileChart from './LinkProfileChart';
 import { calculateBullingtonDiffraction } from '../../utils/rfMath';
@@ -114,12 +114,21 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagat
     };
 
     // Resize Handler
+    const cleanupRef = useRef(null);
+    
     const handleMouseDown = (e) => {
         draggingRef.current = true;
         setIsResizing(true);
         lastPosRef.current = { x: e.clientX, y: e.clientY };
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
+        
+        // Fix 12: Store cleanup function
+        cleanupRef.current = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+        
         e.preventDefault(); // Prevent selection
     };
 
@@ -147,7 +156,17 @@ const LinkAnalysisPanel = ({ nodes, linkStats, budget, distance, units, propagat
         setIsResizing(false);
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        cleanupRef.current = null;
     };
+    
+    // Fix 12: Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (cleanupRef.current) {
+                cleanupRef.current();
+            }
+        };
+    }, []);
 
     return (
         <div ref={panelRef} style={{

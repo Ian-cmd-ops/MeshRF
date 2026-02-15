@@ -13,17 +13,18 @@ std::vector<int> optimize_site_selection(const float* coverage_matrix, int num_c
 
 EMSCRIPTEN_BINDINGS(meshrf_module) {
     
-    // Bind LinkParameters Struct
-    value_object<LinkParameters>("LinkParameters")
-        .field("frequency_mhz", &LinkParameters::frequency_mhz)
-        .field("tx_height_m", &LinkParameters::tx_height_m)
-        .field("rx_height_m", &LinkParameters::rx_height_m)
-        .field("polarization", &LinkParameters::polarization)
-        .field("step_size_m", &LinkParameters::step_size_m)
-        .field("N_0", &LinkParameters::N_0)
-        .field("epsilon", &LinkParameters::epsilon)
-        .field("sigma", &LinkParameters::sigma)
-        .field("climate", &LinkParameters::climate)
+    // Bind LinkParameters Struct as Class with Constructor
+    class_<LinkParameters>("LinkParameters")
+        .constructor<>()
+        .property("frequency_mhz", &LinkParameters::frequency_mhz)
+        .property("tx_height_m", &LinkParameters::tx_height_m)
+        .property("rx_height_m", &LinkParameters::rx_height_m)
+        .property("polarization", &LinkParameters::polarization)
+        .property("step_size_m", &LinkParameters::step_size_m)
+        .property("N_0", &LinkParameters::N_0)
+        .property("epsilon", &LinkParameters::epsilon)
+        .property("sigma", &LinkParameters::sigma)
+        .property("climate", &LinkParameters::climate)
         ;
 
     // Register Vector types

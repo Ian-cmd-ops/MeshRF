@@ -44,7 +44,14 @@ const useSimulationStore = create((set, get) => ({
   }),
   
   startScan: async (optimizeN = null) => {
-    const { nodes } = get();
+    const { nodes, isScanning } = get();
+    
+    // Fix 15: Prevent double-submit race condition
+    if (isScanning) {
+      console.warn('Scan already in progress, ignoring duplicate request');
+      return;
+    }
+    
     if (nodes.length === 0) return;
     
     set({ isScanning: true, scanProgress: 0, results: null, compositeOverlay: null, interNodeLinks: null, totalUniqueCoverageKm2: null });

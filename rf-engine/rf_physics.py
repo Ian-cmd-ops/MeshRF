@@ -177,16 +177,21 @@ def analyze_link(elevs, dist_m, freq_mhz, tx_h, rx_h, k_factor=1.333, clutter_he
     clearance = los_h - terrain_h
     
     min_clearance_ratio = 100.0
+    evaluated = False
     
     for i in range(num_points):
         d1 = dists[i]
         d2 = dist_m - d1
         if d1 < 1 or d2 < 1: continue
+        evaluated = True
             
         f1 = calculate_fresnel_zone(dist_m, freq_mhz, d1, d2)
         ratio = clearance[i] / f1
         if ratio < min_clearance_ratio:
             min_clearance_ratio = ratio
+    
+    if not evaluated:
+        min_clearance_ratio = 0.0
             
     status = "viable"
     if min_clearance_ratio < 0:

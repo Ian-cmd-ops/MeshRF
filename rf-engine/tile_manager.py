@@ -6,8 +6,9 @@ import logging
 import os
 import scipy.ndimage
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from requests.adapters import HTTPAdapter
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +28,9 @@ class TileManager:
         self.tile_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix='tile_')
         self.batch_executor = ThreadPoolExecutor(max_workers=30, thread_name_prefix='batch_')
         
-        # Request coalescing to prevent thundering herd
-        self.tile_locks = {}
+        # Request coalescing to prevent thundering herd (LRU-capped to prevent unbounded growth)
+        self.tile_locks = OrderedDict()
+        self._max_locks = 1000
         self.global_lock = threading.Lock()
 
     def get_tile_data(self, lat=None, lon=None, tile_x=None, tile_y=None, zoom=None):
@@ -52,7 +54,11 @@ class TileManager:
         # 2. Cache miss - use lock to prevent redundant fetches
         with self.global_lock:
             if tile_key not in self.tile_locks:
+                if len(self.tile_locks) >= self._max_locks:
+                    self.tile_locks.popitem(last=False)  # Remove oldest
                 self.tile_locks[tile_key] = threading.Lock()
+            else:
+                self.tile_locks.move_to_end(tile_key)  # Mark as recently used
             lock = self.tile_locks[tile_key]
             
         with lock:
@@ -67,6 +73,17 @@ class TileManager:
                 self._cache_tile(tile_key, data)
         
         return data
+    
+    def shutdown(self):
+        """Shutdown thread pools gracefully."""
+        self.tile_executor.shutdown(wait=False)
+        self.batch_executor.shutdown(wait=False)
+    
+    def __del__(self):
+        try:
+            self.shutdown()
+        except Exception:
+            pass
 
     def get_elevation(self, lat, lon):
         """
@@ -174,7 +191,11 @@ class TileManager:
         
         all_elevations = []
         for future in futures:
-            batch_result = future.result()
+            try:
+                batch_result = future.result(timeout=30)
+            except (TimeoutError, Exception) as e:
+                logger.error(f"Tile fetch timed out or failed: {e}")
+                return None
             if batch_result is None:
                 return None
             all_elevations.extend(batch_result)
@@ -232,7 +253,11 @@ class TileManager:
         futures = [self.tile_executor.submit(fetch_single_tile, tx, ty, tz) for tx, ty, tz in unique_tiles]
         
         for future in futures:
-            key, data = future.result()
+            try:
+                key, data = future.result(timeout=30)
+            except (TimeoutError, Exception) as e:
+                logger.error(f"Tile fetch timed out or failed: {e}")
+                continue
             tile_data_map[key] = data
             
         # 3. Extract elevations

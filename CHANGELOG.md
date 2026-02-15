@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.5] - 2026-02-15
+
+### Fixed
+
+#### Backend (Python)
+
+- **SSE Infinite Loop**: Added max iteration count (600 polls = 5 min timeout) to `/task/{task_id}/status` endpoint to prevent indefinite HTTP connections when tasks don't exist or workers die.
+- **Silent Exception Swallowing**: Replaced bare `except` blocks in `calculate_viewshed` with structured logging, warning messages, and error count summaries.
+- **False-Positive Perfect Links**: Added evaluation flag to `analyze_link` - if no points are evaluated, `min_clearance_ratio` is set to 0.0 to prevent misleading "perfect link" reports.
+- **ThreadPoolExecutor Leaks**: Implemented `shutdown()` and `__del__()` methods in `TileManager` to gracefully terminate thread pools and prevent resource leaks.
+- **Missing Timeouts**: Added 30-second timeouts to all `future.result()` calls with `TimeoutError` handling to prevent indefinite blocking.
+- **Unbounded tile_locks Growth**: Replaced `tile_locks` dictionary with OrderedDict LRU cache capped at 1000 entries to prevent memory exhaustion.
+- **Incorrect HTTP Status Codes**: Differentiated `ValueError` (400 Bad Request) from general `Exception` (500 Internal Server Error) in `/elevation-batch` endpoint error handling.
+
+#### Frontend (React/JavaScript)
+
+- **Stale Message Listeners**: Moved Web Worker message handler into `useEffect` in `useViewshedTool.js` to ensure proper cleanup with stable reference.
+- **Stale Closures in Link Analysis**: Reverted to `configRef` pattern in `LinkLayer.jsx` to prevent infinite re-render loops while maintaining access to current config values.
+- **Document Event Listener Leaks**: Implemented `cleanupRef` in `LinkAnalysisPanel.jsx` to track and remove document resize listeners on component unmount.
+- **Missing HTTP Error Handling**: Added `response.ok` checks to all `fetch` calls in `rfService.js` to properly handle non-200 responses.
+- **Silent WASM Load Failures**: Added `wasmError` state to `useRFCoverageTool.js` with early return checks and user-facing error feedback.
+- **Scan Double-Submit Race**: Added `isScanning` guard check in `useSimulationStore.startScan` to prevent rapid double-click issues.
+- **Missing React Imports**: Added `useRef` and `useEffect` to `LinkAnalysisPanel.jsx` imports (post-deployment fix).
+- **Model Selection Not Recalculating**: Added `propagationSettings` to `useEffect` dependencies in `LinkLayer.jsx` so changing propagation models (Hata/Bullington/ITM) triggers automatic link recalculation.
+
+#### WASM/C++
+
+- **LinkParameters Constructor Error**: Fixed Emscripten bindings in `libmeshrf/src/bindings.cpp` - changed from `value_object` to `class_` with `.constructor<>()` to expose proper JavaScript constructor for ITM propagation calculations.
+
+### Changed
+
+- Rebuilt WASM module (`meshrf.wasm` 109KB, `meshrf.js` 48KB) with corrected bindings.
+
 ## [1.15.4] - 2026-02-12
 
 ### Fixed

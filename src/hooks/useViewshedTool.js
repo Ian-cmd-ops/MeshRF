@@ -91,7 +91,7 @@ export function useViewshedTool(active) {
 
         worker.addEventListener('message', handleMessage);
         return () => worker.removeEventListener('message', handleMessage);
-    }, []);
+    }, []); // No dependencies - stable handler per mount
 
 
     // Clear state when tool is deactivated

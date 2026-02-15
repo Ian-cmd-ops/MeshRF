@@ -26,6 +26,9 @@ export const optimizeLocation = async (bounds, freq, txHeight, rxHeight, weights
                 existing_nodes: existingNodes
             })
         });
+        if (!response.ok) {
+            throw new Error(`Optimize location failed: ${response.status} ${response.statusText}`);
+        }
         const initialData = await response.json();
         return initialData;
     } catch (error) {
@@ -53,6 +56,9 @@ export const calculateLink = async (nodeA, nodeB, freq, h1, h2, model, env, kFac
                 clutter_height: Number(clutterHeight) || 0
             })
         });
+        if (!response.ok) {
+            throw new Error(`Calculate link failed: ${response.status} ${response.statusText}`);
+        }
         return await response.json();
     } catch (error) {
         console.error("Link Calc Error:", error);

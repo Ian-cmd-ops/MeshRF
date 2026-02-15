@@ -179,11 +179,19 @@ def get_batch_elevation(req: BatchElevationRequest, request: Request):
             "status": "OK",
             "results": results
         }
-    except Exception as e:
+    except ValueError as e:
         from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=400,
             content={"status": "INVALID_REQUEST", "error": str(e)}
+        )
+    except Exception as e:
+        from fastapi.responses import JSONResponse
+        import logging
+        logging.getLogger(__name__).error(f"Internal error: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": "SERVER_ERROR", "error": "Internal server error"}
         )
 
 
@@ -280,8 +288,10 @@ async def task_status_endpoint(task_id: str):
 
     async def event_generator():
         task = AsyncResult(task_id, app=celery_app)
-        while True:
-            # Check status
+        max_polls = 600  # 5 minutes at 0.5s
+        polls = 0
+        while polls < max_polls:
+            polls += 1
             if task.state == 'PENDING':
                 yield json.dumps({"event": "progress", "data": {"progress": 0}})
             elif task.state == 'PROGRESS':
@@ -289,12 +299,13 @@ async def task_status_endpoint(task_id: str):
                 yield json.dumps({"event": "progress", "data": meta})
             elif task.state == 'SUCCESS':
                 yield json.dumps({"event": "complete", "data": task.result})
-                break
+                return
             elif task.state == 'FAILURE':
                 yield json.dumps({"event": "error", "data": str(task.info)})
-                break
+                return
             
             await asyncio.sleep(0.5)
+        yield json.dumps({"event": "error", "data": "Task timed out after 5 minutes"})
 
     return EventSourceResponse(event_generator())
 
