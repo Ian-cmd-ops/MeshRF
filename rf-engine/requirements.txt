@@ -11,3 +11,4 @@ itmlogic
 celery
 sse-starlette
 slowapi
+httpx

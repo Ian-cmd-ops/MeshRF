@@ -473,3 +473,63 @@ def export_results_endpoint(req: ExportRequest):
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# --- MeshCore Node Overlay ---
+import httpx
+import json
+from datetime import datetime, timezone
+
+@app.get("/nodes/meshcore")
+async def get_meshcore_nodes():
+    cache_key = "meshcore_nodes_pnw"
+    cached = redis_client.get(cache_key)
+    if cached:
+        return json.loads(cached)
+
+    north = float(os.environ.get("PNW_BBOX_NORTH", 49.5))
+    south = float(os.environ.get("PNW_BBOX_SOUTH", 47.0))
+    east = float(os.environ.get("PNW_BBOX_EAST", -120.5))
+    west = float(os.environ.get("PNW_BBOX_WEST", -124.0))
+    api_url = os.environ.get("MESHCORE_API_URL", "https://api.meshcore.nz/api/v1/map/nodes")
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(api_url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+    nodes = [
+        n for n in data.get("nodes", [])
+        if south <= n["latitude"] <= north
+        and west <= n["longitude"] <= east
+    ]
+
+    result = {"nodes": nodes, "fetched_at": datetime.now(timezone.utc).isoformat(), "count": len(nodes)}
+    redis_client.setex(cache_key, 300, json.dumps(result))
+    return result
+
+
+# --- MeshCore Node Overlay ---
+import httpx
+import json
+from datetime import datetime, timezone
+
+@app.get("/nodes/meshcore")
+async def get_meshcore_nodes():
+    cache_key = "meshcore_nodes_pnw"
+    cached = redis_client.get(cache_key)
+    if cached:
+        return json.loads(cached)
+    north = float(os.environ.get("PNW_BBOX_NORTH", 49.5))
+    south = float(os.environ.get("PNW_BBOX_SOUTH", 47.0))
+    east = float(os.environ.get("PNW_BBOX_EAST", -120.5))
+    west = float(os.environ.get("PNW_BBOX_WEST", -124.0))
+    api_url = os.environ.get("MESHCORE_API_URL", "https://api.meshcore.nz/api/v1/map/nodes")
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(api_url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    nodes = [n for n in data.get("nodes", []) if south <= n["latitude"] <= north and west <= n["longitude"] <= east]
+    result = {"nodes": nodes, "fetched_at": datetime.now(timezone.utc).isoformat(), "count": len(nodes)}
+    redis_client.setex(cache_key, 300, json.dumps(result))
+    return result
